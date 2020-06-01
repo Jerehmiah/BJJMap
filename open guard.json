@@ -1,0 +1,24 @@
+{xbot: {position:{x:127,y:12,z:2.1},
+       hip:{x:-2,y:0,z:2},
+       leftShoulder:{x:0,y:0,z:-1.5},
+       leftForeArm:{x:0,y:-2,z:0},
+       rightShoulder:{x:0,y:0,z:1},
+       rightForeArm:{x:0,y:2,z:0},
+       leftUpLeg:{x:-1.8,y:-1.7,z:1.5},
+       leftLeg:{x:2,y:-.7,z:-1.7},
+       rightUpLeg:{x:0,y:1.8,z:-1.8},
+       rightLeg:{x:2,y,1.7,z:2}},
+  ybot: {position:{x:-49,y:53,z:.25},
+       hip:{x:0,y:-1,z:0},
+       rightShoulder:{x:0, y:1.8, z:.5},
+       leftShoulder:{x:0, y:-1.8,z:-.3},
+       rightLeg:{x:2,y:0,z:0},
+       rightFoot:{x:1.75, y:0, z:0},
+       leftLeg:{x:2,y:0,z:0},
+       leftFoot:{x:1.75, y:0, z:0},
+
+}
+
+}
+
+    
