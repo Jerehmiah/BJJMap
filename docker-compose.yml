@@ -1,0 +1,13 @@
+bjjmap:
+  build: .
+  ports:
+    - 3000:3000
+  volumes:
+    - ~/BJJMap:~/BJJMap/volume
+  links:
+    - database
+  environment:
+    - MAIN_DB_NAME=bjjmap_database_1
+
+database:
+  image: mongo:latest
