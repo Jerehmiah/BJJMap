@@ -3,7 +3,7 @@ bjjmap:
   ports:
     - 3000:3000
   volumes:
-    - ~/BJJMap:~/BJJMap/volume
+    - ~/BJJMap:/user/home/jerehmiah/volumes/bjjmap
   links:
     - database
   environment:
