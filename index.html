@@ -16,6 +16,10 @@
 <div class="loading" id="js-loader"><div class="loader"></div></div> -->
   
 <div class="wrapper">
+<div id="controls">
+  <button id="save_scene">Save position</button>
+  <button id="load_scene">Load position</button>
+</div>
     <!-- The canvas element is used to draw the 3D scene -->
 <canvas id="c"></canvas>
 
@@ -30,6 +34,8 @@
   import * as THREE from 'https://threejs.org/build/three.module.js'
   import { FBXLoader } from 'https://threejs.org/examples/jsm/loaders/FBXLoader.js';
   import {GUI} from 'https://threejs.org/examples/jsm/libs/dat.gui.module.js'
+  import { GLTFExporter } from 'https://threejs.org/examples/jsm/exporters/GLTFExporter.js';
+
 
   (function () {
   // Set our main variables
@@ -194,7 +200,50 @@
     controls.target.set( 100, 75, 0 );
     controls.update();
 
+    document.getElementById( 'save_scene' ).addEventListener( 'click', function () {
+      exportGLTF( scene );
+    } );
+
+    document.getElementById( 'load_scene' ).addEventListener( 'click', function () {
+
+      importGLTF();
+
+    } );
+
   }
+
+  function exportGLTF(scene){
+    var gltfExporter = new GLTFExporter();
+    var options = {};
+    gltfExporter.parse(scene, function(result){
+      var output = JSON.stringify( result, null, 2 );
+      console.log( output );
+      saveString( output, 'scene.gltf' );
+    }, options);
+  }
+
+  function importGLTF(){
+
+  }
+  var link = document.createElement( 'a' );
+  link.style.display = 'none';
+  document.body.appendChild( link ); // Firefox workaround, see #6594
+
+  function save( blob, filename ) {
+
+    link.href = URL.createObjectURL( blob );
+    link.download = filename;
+    link.click();
+
+  // URL.revokeObjectURL( url ); breaks Firefox...
+
+  }
+
+function saveString( text, filename ) {
+
+  save( new Blob( [ text ], { type: 'text/plain' } ), filename );
+
+}
 
   function addBoneUi(container, bones){
     var movement = container.addFolder("Move model");
