@@ -24,6 +24,7 @@ let scene,
   ybones =[],
   uiSetup = false,
   xbotLoaded = false,
+  annotationList =[],
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
 
 init();
@@ -68,16 +69,69 @@ function newDirectedLight(){
     return dirLight;
 }
 
+function makeNumberSprite(){
+    var numCanvas = document.getElementById("number");
+    const ctx = numCanvas.getContext('2d');
+    const x = 32;
+    const y = 32;
+    const radius = 30;
+    const startAngle = 0;
+    const endAngle = Math.PI * 2;
+
+    ctx.fillStyle = 'rgb(0, 0, 0)';
+    ctx.beginPath();
+    ctx.arc(x, y, radius, startAngle, endAngle);
+    ctx.fill();
+
+    ctx.strokeStyle = 'rgb(255, 255, 255)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, startAngle, endAngle);
+    ctx.stroke();
+
+    ctx.fillStyle = 'rgb(255, 255, 255)';
+    ctx.font = '32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(`${annotationList.length + 1}`, x, y);
+
+    const numberTexture = new THREE.CanvasTexture(
+        document.querySelector('#number')
+    );
+    
+    const spriteMaterial = new THREE.SpriteMaterial({
+        map: numberTexture,
+        alphaTest: 0.5,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false
+    });
+    
+    return new THREE.Sprite(spriteMaterial);
+}
+
+function newAnnotation(position){
+    sprite = makeNumberSprite();
+    sprite.position.set(position.x, position.y, position.z);
+    sprite.scale.set(35, 35, 1);
+    
+    scene.add(sprite);
+
+
+    var annotation = document.querySelector(".annotation");
+    annotation = annotation.cloneNode(true);
+    annotation.id = `annotation${annotationList.length+1}`
+    document.body.appendChild(annotation);
+    annotation.style.opacity = 1;
+    annotationList.push({vector:position,element:annotation});    
+}
+
+
 function init() {
-
-  
-
   // Init the scene
   newScene();
-
   // Init the renderer
   newRenderer();
-
   // Add a camera
   camera = new THREE.PerspectiveCamera(
     50,
@@ -265,7 +319,7 @@ function update() {
   if (mixer) {
     mixer.update(clock.getDelta());
   }
-
+  positionAnnotations();
   renderer.render(scene, camera);
   requestAnimationFrame(update);
   setupDatGui();
@@ -302,70 +356,34 @@ function raycast(e, touch = false) {
   // calculate objects intersecting the picking ray
   var intersects = raycaster.intersectObjects(scene.children, true);
 
-  if (intersects[0]) {
-    var object = intersects[0].point;
+  if (intersects[0] && intersects[0].object.name.includes("Surface")) {
+    var position = intersects[0].point;
     console.log("click:"+getMousePos(e).x+","+getMousePos(e).y);
-    positionText(object);
+    newAnnotation(position);
   }
 }
 
-function positionText(pos){
-    var numCanvas = document.getElementById("number");
-    const ctx = numCanvas.getContext('2d');
-    const x = 32;
-    const y = 32;
-    const radius = 30;
-    const startAngle = 0;
-    const endAngle = Math.PI * 2;
-
-    ctx.fillStyle = 'rgb(0, 0, 0)';
-    ctx.beginPath();
-    ctx.arc(x, y, radius, startAngle, endAngle);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgb(255, 255, 255)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, startAngle, endAngle);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgb(255, 255, 255)';
-    ctx.font = '32px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('1', x, y);
-
-    const annotation = document.querySelector(".annotation");
-    const vector = new THREE.Vector3(pos.x, pos.y, pos.z);
+function positionAnnotations(){
     const canvas = renderer.domElement;
+    annotationList.forEach(annotationObj =>{
+        const position = annotationObj.vector;
+        var vector = new THREE.Vector3(position.x, position.y, position.z);
+        
+        const annotation = annotationObj.element;
+        vector.project(camera);
 
-    vector.project(camera);
-
-    vector.x = Math.round((0.5 + vector.x / 2) * (canvas.width / window.devicePixelRatio));
-    vector.y = Math.round((0.5 - vector.y / 2) * (canvas.height / window.devicePixelRatio));
-
-    annotation.style.top = `${vector.y}px`;
-    annotation.style.left = `${vector.x}px`;
-
-    annotation.style.opacity = 1;
-
-    const numberTexture = new THREE.CanvasTexture(
-        document.querySelector('#number')
-    );
+        vector.x = Math.round((0.5 + vector.x / 2) * (canvas.width / window.devicePixelRatio));
+        vector.y = Math.round((0.5 - vector.y / 2) * (canvas.height / window.devicePixelRatio));
     
-    const spriteMaterial = new THREE.SpriteMaterial({
-        map: numberTexture,
-        alphaTest: 0.5,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false
+        annotation.style.top = `${vector.y}px`;
+        annotation.style.left = `${vector.x}px`;
+    
+        
     });
     
-    sprite = new THREE.Sprite(spriteMaterial);
-    sprite.position.set(pos.x, pos.y, pos.z);
-    sprite.scale.set(35, 35, 1);
     
-    scene.add(sprite);
+
+    
 }
 
 
