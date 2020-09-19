@@ -25,6 +25,7 @@ let scene,
   uiSetup = false,
   xbotLoaded = false,
   annotationList =[],
+  wrapper = document.getElementById("wrapper"),
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
 
 init();
@@ -45,7 +46,7 @@ function newRenderer(){
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.shadowMap.enabled = true;
     renderer.setPixelRatio(window.devicePixelRatio);
-    document.body.appendChild(renderer.domElement);
+    // wrapper.appendChild(renderer.domElement);
 }
 
 function newHemiLight(){
@@ -121,7 +122,7 @@ function newAnnotation(position){
     var annotation = document.querySelector(".annotation");
     annotation = annotation.cloneNode(true);
     annotation.id = `annotation${annotationList.length+1}`
-    document.body.appendChild(annotation);
+    wrapper.appendChild(annotation);
     annotation.style.opacity = 1;
     annotationList.push({vector:position,element:annotation});    
 }

@@ -50,6 +50,7 @@
   z-index: 1;
   margin-left: 15px;
   margin-top: 15px;
+  opacity: 0;
   padding: 1em;
   width: 200px;
   color: #fff;
@@ -58,4 +59,10 @@
   font-size: 12px;
   line-height: 1.2;
   transition: opacity .5s;
+}
+
+.wrapper {
+  height: 100%;
+  width: 100%;
+  position: relative;
 }

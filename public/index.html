@@ -8,23 +8,23 @@
 
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Character Tutorial</title>
-    
+    <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
   
   <!-- The loading element overlays all else until the model is loaded, at which point we remove this element from the DOM -->  
-<div class="loading" id="js-loader"><div class="loader"></div></div> 
   
-<div class="wrapper">
+<div id="wrapper" class="wrapper">
   <div id="controls">
     <button id="save_scene">Save position</button>
     <button id="load_scene">Load position</button>
   </div>
     <!-- The canvas element is used to draw the 3D scene -->
+  
   <canvas id="c"></canvas>
 </div>
 <canvas id="number" width="64" height="64"></canvas>
-<div id="tip" class="annotation">Lots of text</div>
+<div id="tip" class="annotation"><p>Text stuff</p></div>
 </body>
 </html>
 
