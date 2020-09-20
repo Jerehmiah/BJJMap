@@ -165,6 +165,9 @@ window.bjjInit= function(user) {
   importGLTF('models/scene/scene2.gltf');
   update();
   onWindowResize();
+  
+  window.addEventListener('click', e => raycast(e));
+  window.addEventListener('touchend', e => raycast(e, true));
 }
 
 function exportGLTF(scene){
@@ -250,7 +253,7 @@ function save( blob, filename ) {
 
 function saveString( text, filename ) {
 
-save( new Blob( [ text ], { type: 'text/plain' } ), filename );
+  save( new Blob( [ text ], { type: 'text/plain' } ), filename );
 
 }
 
@@ -353,13 +356,6 @@ function onWindowResize() {
   renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
-
-
-
-
-window.addEventListener('click', e => raycast(e));
-window.addEventListener('touchend', e => raycast(e, true));
-
 function raycast(e, touch = false) {
   var mouse = {};
   if (touch) {
@@ -400,114 +396,10 @@ function positionAnnotations(){
         
     });
     
-    
-
-    
 }
-
-
-// function positionText(pos){
-//     const canvas = renderer.domElement; // `renderer` is a THREE.WebGLRenderer
-    
-//     pos.project(camera); // `camera` is a THREE.PerspectiveCamera
-    
-//     pos.x = Math.round((0.5 + pos.x / 2) * (canvas.width / window.devicePixelRatio));
-//     pos.y = Math.round((0.5 - pos.y / 2) * (canvas.height / window.devicePixelRatio));
-    
-//     const annotation = document.querySelector('.annotation');
-//     annotation.style.top = `${pos.y}px`;
-//     annotation.style.left = `${pos.x}px`;
-// }
-
-// function positionText(pos){
-//     var v = pos.project(camera);
-//     var left = window.innerWidth * (v.x + 1) / 2;
-//     var top = window.innerHeight * (-v.y + 1) / 2;
-//     console.log("left:"+left);
-//     console.log("top:"+top);
-//     var popup = document.getElementById( 'tip' );
-//     popup.style.left = left+"px";
-//     popup.style.top = top+"px";
-//     popup.style.display = "block";
-//   }
-
-// Get a random animation, and play it 
-function playOnClick() {
-  let anim = Math.floor(Math.random() * possibleAnims.length) + 0;
-  playModifierAnimation(idle, 0.25, possibleAnims[anim], 0.25);
-}
-
-function playModifierAnimation(from, fSpeed, to, tSpeed) {
-  to.setLoop(THREE.LoopOnce);
-  to.reset();
-  to.play();
-  from.crossFadeTo(to, fSpeed, true);
-  setTimeout(function() {
-    from.enabled = true;
-    to.crossFadeTo(from, tSpeed, true);
-    currentlyAnimating = false;
-  }, to._clip.duration * 1000 - ((tSpeed + fSpeed) * 1000));
-}
-
-// document.addEventListener('mousemove', function (e) {
-//   var mousecoords = getMousePos(e);
-//   if (neck && waist) {
-
-//     moveJoint(mousecoords, neck, 50);
-//     moveJoint(mousecoords, waist, 30);
-//   }
-// });
 
 function getMousePos(e) {
   return { x: e.clientX, y: e.clientY };
 }
 
-function moveJoint(mouse, joint, degreeLimit) {
-  let degrees = getMouseDegrees(mouse.x, mouse.y, degreeLimit);
-  joint.rotation.y = THREE.Math.degToRad(degrees.x);
-  joint.rotation.x = THREE.Math.degToRad(degrees.y);
-  console.log(joint.rotation.x);
-}
 
-function getMouseDegrees(x, y, degreeLimit) {
-  let dx = 0,
-    dy = 0,
-    xdiff,
-    xPercentage,
-    ydiff,
-    yPercentage;
-
-  let w = { x: window.innerWidth, y: window.innerHeight };
-
-  // Left (Rotates neck left between 0 and -degreeLimit)
-  // 1. If cursor is in the left half of screen
-  if (x <= w.x / 2) {
-    // 2. Get the difference between middle of screen and cursor position
-    xdiff = w.x / 2 - x;
-    // 3. Find the percentage of that difference (percentage toward edge of screen)
-    xPercentage = (xdiff / (w.x / 2)) * 100;
-    // 4. Convert that to a percentage of the maximum rotation we allow for the neck
-    dx = ((degreeLimit * xPercentage) / 100) * -1;
-  }
-
-  // Right (Rotates neck right between 0 and degreeLimit)
-  if (x >= w.x / 2) {
-    xdiff = x - w.x / 2;
-    xPercentage = (xdiff / (w.x / 2)) * 100;
-    dx = (degreeLimit * xPercentage) / 100;
-  }
-  // Up (Rotates neck up between 0 and -degreeLimit)
-  if (y <= w.y / 2) {
-    ydiff = w.y / 2 - y;
-    yPercentage = (ydiff / (w.y / 2)) * 100;
-    // Note that I cut degreeLimit in half when she looks up
-    dy = (((degreeLimit * 0.5) * yPercentage) / 100) * -1;
-  }
-  // Down (Rotates neck down between 0 and degreeLimit)
-  if (y >= w.y / 2) {
-    ydiff = y - w.y / 2;
-    yPercentage = (ydiff / (w.y / 2)) * 100;
-    dy = (degreeLimit * yPercentage) / 100;
-  }
-  return { x: dx, y: dy };
-}
