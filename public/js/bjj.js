@@ -10,15 +10,11 @@ import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.j
 const canvas = document.querySelector('#c');
 const backgroundColor = 0xfff1f1;
 let scene,
-  fbuser,
+  fbuser, //our firebase user
   renderer,
   camera,
   controls,
-  possibleAnims,                      // Animations found in our file
-  mixer,                              // THREE.js animations mixer
-  idle,                               // Idle, the default state our character returns to
   sprite,
-  clock = new THREE.Clock(),          // Used for anims, which run to a clock instead of frame rate 
   raycaster = new THREE.Raycaster(),  // Used to detect the click on our character
   gui = new GUI(),
   xbones =[],
@@ -339,9 +335,6 @@ function setupDatGui() {
 
 
 function update() {
-  if (mixer) {
-    mixer.update(clock.getDelta());
-  }
   positionAnnotations();
   renderer.render(scene, camera);
   requestAnimationFrame(update);
