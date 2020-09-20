@@ -66,3 +66,7 @@
   width: 100%;
   position: relative;
 }
+
+.debugControls {
+  display: none;
+}

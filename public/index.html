@@ -2,29 +2,56 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    
+    <script src="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.js"></script>
+    <link type="text/css" rel="stylesheet" href="https://www.gstatic.com/firebasejs/ui/4.6.1/firebase-ui-auth.css" />
     <!-- Imporant meta information to make the page as rigid as possible on mobiles, to avoid unintentional zooming on the page itself  -->
     <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>Character Tutorial</title>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="js/bjjauth.js"></script>
 </head>
 <body>
-  
+<div id="firebaseui-auth-container"></div>
   <!-- The loading element overlays all else until the model is loaded, at which point we remove this element from the DOM -->  
-  
+<div id="controls" class="debugControls">
+  <button id="save_scene">Save position</button>
+  <button id="load_scene">Load position</button>
+</div>
 <div id="wrapper" class="wrapper">
-  <div id="controls">
-    <button id="save_scene">Save position</button>
-    <button id="load_scene">Load position</button>
-  </div>
+  
     <!-- The canvas element is used to draw the 3D scene -->
   
   <canvas id="c"></canvas>
 </div>
 <canvas id="number" width="64" height="64"></canvas>
-<div id="tip" class="annotation"><p>Text stuff</p></div>
+<div id="tip"  class="annotation"><p>Text stuff</p></div>
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-app.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+<script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.21.0/firebase-auth.js"></script>
+
+<script>
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  var firebaseConfig = {
+    apiKey: "AIzaSyA2iiYKR0F7Gqqkp7OzO7CMf3WabUBceeQ",
+    authDomain: "bjjmap-e68a1.firebaseapp.com",
+    databaseURL: "https://bjjmap-e68a1.firebaseio.com",
+    projectId: "bjjmap-e68a1",
+    storageBucket: "bjjmap-e68a1.appspot.com",
+    messagingSenderId: "421191772810",
+    appId: "1:421191772810:web:7e5bd0cba870b16eda9b73",
+    measurementId: "G-86QK7RPKLD"
+  };
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  firebase.analytics();
+</script>
 </body>
 </html>
 

@@ -5,11 +5,12 @@ import { GLTFExporter } from 'https://threejs.org/examples/jsm/exporters/GLTFExp
 import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
 
 
-(function () {
+
 // Set our main variables
 const canvas = document.querySelector('#c');
 const backgroundColor = 0xfff1f1;
 let scene,
+  fbuser,
   renderer,
   camera,
   controls,
@@ -28,8 +29,8 @@ let scene,
   wrapper = document.getElementById("wrapper"),
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
 
-init();
-importGLTF('models/scene/scene2.gltf');
+
+
 
 function newScene(){
     scene = new THREE.Scene();
@@ -114,7 +115,7 @@ function makeNumberSprite(){
 function newAnnotation(position){
     sprite = makeNumberSprite();
     sprite.position.set(position.x, position.y, position.z);
-    sprite.scale.set(35, 35, 1);
+    sprite.scale.set(10, 10, 1);
     
     scene.add(sprite);
 
@@ -128,7 +129,8 @@ function newAnnotation(position){
 }
 
 
-function init() {
+window.bjjInit= function(user) {
+    fbuser = user;
   // Init the scene
   newScene();
   // Init the renderer
@@ -157,10 +159,12 @@ function init() {
 
   document.getElementById( 'load_scene' ).addEventListener( 'click', function () {
 
-    importGLTF('models/scene/closed_guard.gltf');
+    importGLTF('models/scene/closed_guard3.gltf');
 
   } );
-
+  importGLTF('models/scene/scene2.gltf');
+  update();
+  onWindowResize();
 }
 
 function exportGLTF(scene){
@@ -303,6 +307,16 @@ function addBoneUi(container, bones){
   }
 }  
 
+function showDebugControls(){
+    var debugControls = document.querySelector(".debugControls");
+    debugControls.style.display = "block";
+}
+
+function logout(){
+    window.bjjSignout(()=>{
+        window.location.reload()});
+}
+
 function setupDatGui() {
   if(!uiSetup && xbotLoaded){
     uiSetup = true;
@@ -311,6 +325,11 @@ function setupDatGui() {
     gui = new GUI();
     addBoneUi(gui.addFolder( "Blue Bot" ), ybones);
     addBoneUi(gui.addFolder( "Red Bot" ), xbones);
+    var options = {debug: showDebugControls,
+               logout: logout
+              }
+    gui.add(options, "debug").name("Show Debug");
+    gui.add(options, "logout").name("Logout");
 
   }
 }
@@ -334,8 +353,7 @@ function onWindowResize() {
   renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
-update();
-onWindowResize();
+
 
 
 
@@ -493,5 +511,3 @@ function getMouseDegrees(x, y, degreeLimit) {
   }
   return { x: dx, y: dy };
 }
-
-})();
