@@ -4,10 +4,13 @@ import (
     "github.com/martini-contrib/render"
     "github.com/martini-contrib/sessions"
     "github.com/grandmore/mgosessions"
-    "github.com/jerehmiah/bjjmap/database"
+    "github.com/jerehmiah/BJJMap/database"
+    "github.com/jerehmiah/BJJMap/auth"
 )
 
 func main() {
+    auth.EstablishAuth()
+
     m := martini.Classic()
 
     m.Map(database.Database())
@@ -15,5 +18,8 @@ func main() {
     store.Options.MaxAge = 31536000
     m.Use(sessions.Sessions("bjjmap_session", store))
     m.Use(render.Renderer())   
+
+    
+
     m.Run()
 }
