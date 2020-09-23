@@ -6,6 +6,7 @@ import (
     "github.com/grandmore/mgosessions"
     "github.com/jerehmiah/BJJMap/database"
     "github.com/jerehmiah/BJJMap/auth"
+    "github.com/jerehmiah/BJJMap/controllers"
 )
 
 func main() {
@@ -19,7 +20,16 @@ func main() {
     m.Use(sessions.Sessions("bjjmap_session", store))
     m.Use(render.Renderer())   
 
-    
+    auth.EstablishAuth()
+
+    positionController := controllers.NewPositionController(database.Database())
+
+    m.Group("/api/positions/:version", func(r martini.Router){
+        r.Get("/", positionController.GetAllPositions)
+        r.Get("/base", positionController.GetBasePosition)
+        r.Post("/base", positionController.SetBasePosition)
+    }, auth.TokenAuth())
+
 
     m.Run()
 }

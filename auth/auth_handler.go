@@ -4,13 +4,18 @@ import (
 	"log"
 	"fmt"
 	"github.com/go-martini/martini"
-    "github.com/martini-contrib/sessions"    
     "github.com/martini-contrib/render"
 	firebase "firebase.google.com/go/v4"
 	"net/http"
 )
 
 var fbApp *firebase.App
+
+type UserInfo struct {
+	DisplayName string
+	Email       string
+	UID         string
+}
 
 func EstablishAuth() {
 	//setup firebase app
@@ -26,17 +31,26 @@ func GetApp() *firebase.App {
 }
 
 func TokenAuth() martini.Handler {  
-    return func(req *http.Request, session sessions.Session, r render.Render) {     
-		client, err := app.Auth(context.Background)
+    return func(c martini.Context, req *http.Request, r render.Render) {     
+		client, err := fbApp.Auth(context.Background())
 		if err != nil {
 			log.Fatalf("error getting Auth client: %v\n", err)
 			r.JSON(401, fmt.Sprint(err))
+			return
 		}
-		token, err := client.VerifyIDToken(ctx, req.Header.Get("token"))
+		token, err := client.VerifyIDToken(context.Background(), req.Header.Get("token"))
 		if err != nil {
 			log.Fatalf("error verifying ID token: %v\n", err)
 			r.JSON(401, fmt.Sprint(err))
+			return
 		}
-		r.JSON(200, "Yay")
+		user,err := client.GetUser(context.Background(), token.UID)
+		if err != nil {
+			log.Fatalf("Error getting user: %v\n", err)
+			r.JSON(401, fmt.Sprint(err))
+			return
+		}
+		userData := &UserInfo{user.DisplayName, user.Email, user.UID}
+		c.Map(userData)
     }
 }
