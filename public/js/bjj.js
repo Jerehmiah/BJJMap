@@ -158,7 +158,29 @@ window.bjjInit= function(user) {
     importGLTF('models/scene/closed_guard3.gltf');
 
   } );
-  importGLTF('models/scene/scene2.gltf');
+
+
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = ()=>{
+        if (xhttp.readyState == 4 && xhttp.status === 200){
+            console.log(xhttp.responseText);
+            var responseBody = JSON.parse(xhttp.responseText);
+            if(responseBody.gltf){
+                parseGLTF(atob(responseBody.gltf));
+            } else {
+                importGLTF('models/scene/closed_guard.gltf');
+            }
+        } else {
+            importGLTF('models/scene/closed_guard.gltf');
+        }
+    };
+
+    xhttp.open("GET", "/api/positions/1/base", true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.send();
+    });
+  
   update();
   onWindowResize();
   
@@ -167,13 +189,33 @@ window.bjjInit= function(user) {
 }
 
 function exportGLTF(scene){
-  var gltfExporter = new GLTFExporter();
-  var options = {};
-  gltfExporter.parse(scene, function(result){
-    var output = JSON.stringify( result, null, 2 );
-    console.log( output );
-    saveString( output, 'scene.gltf' );
-  }, options);
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = ()=>{
+        if (xhttp.readyState == 4){
+            console.log(xhttp.status)
+        }
+    };
+
+    xhttp.open("POST", "/api/positions/1/base", true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+    var gltfExporter = new GLTFExporter();
+    var options = {};
+    gltfExporter.parse(scene, function(result){
+        var output = JSON.stringify( result, null, 2 );
+        
+        var xbody = JSON.stringify({
+            id: "",
+            owner: "",
+            public: false,
+            gltf: btoa(output)
+        });
+        console.log(xbody);
+        xhttp.send(xbody);
+    }, options);
+   
+  });
 }
 
 function isXbotBone(o){
@@ -186,6 +228,31 @@ function isXbotBone(o){
    return isXBot;
  }
 
+function doneLoading( gltf ){
+    newScene();
+    gltf.scene.traverse( o=>{
+    if (o.isBone && o.userData.transformData && !irrelevantBoneNames.includes(o.name)){
+        
+        if (isXbotBone(o) ){
+        xbones.push(o)
+        }
+        else{
+        
+        ybones.push(o)
+        }
+    }
+    });
+    scene.add( gltf.scene );
+    gltf.animations; // Array<THREE.AnimationClip>
+    gltf.scene; // THREE.Group
+    gltf.scenes; // Array<THREE.Group>
+    gltf.cameras; // Array<THREE.Camera>
+    gltf.asset; // Object
+    uiSetup = false;
+    xbotLoaded = true;
+    
+}
+
 function importGLTF(fileLocation){
   // Instantiate a loader
   var loader = new GLTFLoader();
@@ -195,29 +262,7 @@ function importGLTF(fileLocation){
     // resource URL
     fileLocation,
     // called when the resource is loaded
-    function ( gltf ) {
-        newScene();
-        gltf.scene.traverse( o=>{
-        if (o.isBone && o.userData.transformData && !irrelevantBoneNames.includes(o.name)){
-         
-          if (isXbotBone(o) ){
-            xbones.push(o)
-          }
-          else{
-            
-            ybones.push(o)
-          }
-        }
-      });
-      scene.add( gltf.scene );
-      gltf.animations; // Array<THREE.AnimationClip>
-      gltf.scene; // THREE.Group
-      gltf.scenes; // Array<THREE.Group>
-      gltf.cameras; // Array<THREE.Camera>
-      gltf.asset; // Object
-      uiSetup = false;
-      xbotLoaded = true;
-    },
+    doneLoading,
     // called while loading is progressing
     function ( xhr ) {
 
@@ -233,6 +278,35 @@ function importGLTF(fileLocation){
   );
 
 }
+
+function parseGLTF(gltf){
+    // Instantiate a loader
+    var loader = new GLTFLoader();
+  
+    // Load a glTF resource
+    loader.parse(
+      // resource URL
+      gltf,
+      //Where subsequent glTF resources will load from, genuinely don't know what this means
+      "/",
+      // called when the resource is loaded
+      doneLoading,
+      // called while loading is progressing
+      function ( xhr ) {
+  
+        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
+  
+      },
+      // called when loading has errors
+      function ( error ) {
+  
+        console.log( 'An error happened' );
+  
+      }
+    );
+  
+  }
+
 var link = document.createElement( 'a' );
 link.style.display = 'none';
 document.body.appendChild( link ); // Firefox workaround, see #6594

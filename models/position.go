@@ -9,6 +9,6 @@ type Position struct {
 	Owner       string         `form:"owner" json:"owner"`
 	Public      bool           `bson:",omitempty" json:"public"`
 	Transitions []Position     `bson:",omitempty" form:"transitions" json:"transitions"`
-	Annotations []Annotation   `form:"annotations" json:"annotations"`
+	Annotations []Annotation   `bson:",omitempty" form:"annotations" json:"annotations"`
 	GLTF        string         `form:"gltf" json:"gltf"`
 }

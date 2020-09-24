@@ -2,9 +2,11 @@ package main
 import (    
     "github.com/go-martini/martini"
     "github.com/martini-contrib/render"
+    "github.com/martini-contrib/binding"
     "github.com/martini-contrib/sessions"
     "github.com/grandmore/mgosessions"
     "github.com/jerehmiah/BJJMap/database"
+    "github.com/jerehmiah/BJJMap/models"
     "github.com/jerehmiah/BJJMap/auth"
     "github.com/jerehmiah/BJJMap/controllers"
 )
@@ -27,7 +29,7 @@ func main() {
     m.Group("/api/positions/:version", func(r martini.Router){
         r.Get("/", positionController.GetAllPositions)
         r.Get("/base", positionController.GetBasePosition)
-        r.Post("/base", positionController.SetBasePosition)
+        r.Post("/base", binding.Bind(models.Position{}), positionController.SetBasePosition)
     }, auth.TokenAuth())
 
 

@@ -6,6 +6,7 @@ import (
     "gopkg.in/mgo.v2"
     "gopkg.in/mgo.v2/bson"
     "os"
+    "fmt"
 )
 
 type (
@@ -25,11 +26,10 @@ func NewPositionController(s *mgo.Session) *PositionController {
 
 func (pc *PositionController) GetBasePosition(userInfo *auth.UserInfo, r render.Render) {
     basePosition := models.Position{}
-    err := pc.positions.Find(bson.M{"owner":userInfo.Email}).One(&basePosition)
-    if err != nil {
-        panic(err)
-    }
-    if len(basePosition.Owner) < 1 {
+    err := pc.basePositions.Find(bson.M{"owner":userInfo.Email}).One(&basePosition)
+    if err != nil || len(basePosition.Owner) < 1 {
+        fmt.Printf("Looking for e-mail of %s\n", userInfo.Email)
+        fmt.Printf("Error: %s\n", err)
         r.JSON(404, "Not found")
         return
     }
@@ -51,10 +51,12 @@ func (pc *PositionController) SetBasePosition(position models.Position, userInfo
     pos := models.Position{}
     pc.basePositions.Find(bson.M{"owner":userInfo.Email})
     if !pos.Id.Valid() {
-        pos.Id = bson.NewObjectId()
+        position.Id = bson.NewObjectId()
+        fmt.Printf("Injecting new user email of %s\n", userInfo.Email)
+        position.Owner = userInfo.Email
     }
 
-    _, err := pc.basePositions.UpsertId(pos.Id, pos)
+    _, err := pc.basePositions.UpsertId(position.Id, position)
     if err != nil {
         panic(err)
     }
