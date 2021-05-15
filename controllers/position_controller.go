@@ -49,16 +49,17 @@ func (pc *PositionController) GetAllPositions(userInfo *auth.UserInfo, r render.
 
 func (pc *PositionController) SetBasePosition(position models.Position, userInfo *auth.UserInfo, r render.Render) {
     pos := models.Position{}
-    pc.basePositions.Find(bson.M{"owner":userInfo.Email})
+    pc.basePositions.Find(bson.M{"owner":userInfo.Email}).One(&pos)
     if !pos.Id.Valid() {
         position.Id = bson.NewObjectId()
         fmt.Printf("Injecting new user email of %s\n", userInfo.Email)
-        position.Owner = userInfo.Email
+    } else {
+        position.Id = pos.Id
     }
-
+    position.Owner = userInfo.Email
     _, err := pc.basePositions.UpsertId(position.Id, position)
     if err != nil {
         panic(err)
     }
-    r.JSON(200, pos)
+    r.JSON(200, position)
 }

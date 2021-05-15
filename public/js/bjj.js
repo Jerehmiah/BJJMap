@@ -1,9 +1,7 @@
 import {OrbitControls} from 'https://threejs.org/examples/jsm/controls/OrbitControls.js'
 import * as THREE from 'https://threejs.org/build/three.module.js'
 import {GUI} from 'https://threejs.org/examples/jsm/libs/dat.gui.module.js'
-import { GLTFExporter } from 'https://threejs.org/examples/jsm/exporters/GLTFExporter.js';
 import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
-
 
 
 // Set our main variables
@@ -17,6 +15,8 @@ let scene,
   sprite,
   raycaster = new THREE.Raycaster(),  // Used to detect the click on our character
   gui = new GUI(),
+  xbot,
+  ybot,
   xbones =[],
   ybones =[],
   uiSetup = false,
@@ -155,32 +155,12 @@ window.bjjInit= function(user) {
 
   document.getElementById( 'load_scene' ).addEventListener( 'click', function () {
 
-    importGLTF('models/scene/closed_guard3.gltf');
+    importGLTF('models/scene/closed_guard.gltf', false);
+
 
   } );
 
-
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = ()=>{
-        if (xhttp.readyState == 4 && xhttp.status === 200){
-            console.log(xhttp.responseText);
-            var responseBody = JSON.parse(xhttp.responseText);
-            if(responseBody.gltf){
-                parseGLTF(atob(responseBody.gltf));
-            } else {
-                importGLTF('models/scene/closed_guard.gltf');
-            }
-        } else {
-            importGLTF('models/scene/closed_guard.gltf');
-        }
-    };
-
-    xhttp.open("GET", "/api/positions/1/base", true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.send();
-    });
-  
+  importGLTF('models/scene/closed_guard.gltf', true);  
   update();
   onWindowResize();
   
@@ -200,22 +180,53 @@ function exportGLTF(scene){
     xhttp.open("POST", "/api/positions/1/base", true);
     xhttp.setRequestHeader("token", accessToken);
     xhttp.setRequestHeader("Content-Type", "application/json");
-    var gltfExporter = new GLTFExporter();
-    var options = {};
-    gltfExporter.parse(scene, function(result){
-        var output = JSON.stringify( result, null, 2 );
-        
-        var xbody = JSON.stringify({
-            id: "",
-            owner: "",
-            public: false,
-            gltf: btoa(output)
-        });
-        console.log(xbody);
-        xhttp.send(xbody);
-    }, options);
+
+    var xbody = JSON.stringify({
+        id: "",
+        owner: "",
+        public: false,
+        gltf: JSON.stringify(figureOutDeltas())
+    });
+    console.log(xbody);
+    xhttp.send(xbody);
+
    
   });
+}
+
+function figureOutDeltas(){
+  var xBotBones = [];
+  xbones.forEach(bone=>{
+    xBotBones.push(boneInfo(bone));
+  });
+  var yBotBones = [];
+  ybones.forEach(bone=>{
+    yBotBones.push(boneInfo(bone))
+  });
+  
+  return {xbones:xBotBones, ybones:yBotBones};
+}
+
+function boneInfo(bone){
+  var boneData = {
+    name:bone.name
+  }
+  if(bone.name.includes("mixamorigHips")){
+    boneData.x=bone.position.x,
+    boneData.y=bone.position.y,
+    boneData.z=bone.position.z
+  }
+  if(bone.rotation.x > 0){
+    boneData.xrot=bone.rotation.x
+  }
+  if(bone.rotation.y > 0){
+    boneData.yrot=bone.rotation.y
+  }
+  if(bone.rotation.z > 0){
+    boneData.zrot=bone.rotation.z
+  }
+
+  return boneData;
 }
 
 function isXbotBone(o){
@@ -229,8 +240,40 @@ function isXbotBone(o){
  }
 
 function doneLoading( gltf ){
+  doLoadInit(gltf);
+}
+
+function doneLoadingAndGetBase(gltf){
+  doLoadInit(gltf);
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = ()=>{
+        if (xhttp.readyState == 4 && xhttp.status === 200){
+            console.log(xhttp.responseText);
+            var responseBody = JSON.parse(xhttp.responseText);
+            if(responseBody.gltf){
+                parseGLTF(JSON.parse(responseBody.gltf));
+            } else {
+                importGLTF('models/scene/closed_guard.gltf', false);
+            }
+        } 
+    };
+
+    xhttp.open("GET", "/api/positions/1/base", true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.send();
+    });
+}
+
+function doLoadInit(gltf){
     newScene();
     gltf.scene.traverse( o=>{
+    if(o.userData.name=="xbot"){
+        xbot = o;
+    }
+    if(o.userData.name=="ybot"){
+        ybot = o;
+    }
     if (o.isBone && o.userData.transformData && !irrelevantBoneNames.includes(o.name)){
         
         if (isXbotBone(o) ){
@@ -250,10 +293,9 @@ function doneLoading( gltf ){
     gltf.asset; // Object
     uiSetup = false;
     xbotLoaded = true;
-    
 }
 
-function importGLTF(fileLocation){
+function importGLTF(fileLocation, andLoadPosition){
   // Instantiate a loader
   var loader = new GLTFLoader();
 
@@ -262,7 +304,7 @@ function importGLTF(fileLocation){
     // resource URL
     fileLocation,
     // called when the resource is loaded
-    doneLoading,
+    andLoadPosition ? doneLoadingAndGetBase : doneLoading,
     // called while loading is progressing
     function ( xhr ) {
 
@@ -279,33 +321,30 @@ function importGLTF(fileLocation){
 
 }
 
+function loadBonePosition(bones, gltBones){
+  bones[0].position.x = gltBones[0].x;
+  bones[0].position.y = gltBones[0].y;
+  bones[0].position.z = gltBones[0].z;
+  gltBones.forEach((bone, index)=> {
+    if(bone.name != bones[index].name){
+      console.log("Bone names did not match: "+bone.name + " / " + bones[index].name);
+    }
+    if ('xrot' in bone){
+      bones[index].rotation.x = bone.xrot;
+    } 
+    if('yrot' in bone){
+      bones[index].rotation.y = bone.yrot;
+    }
+    if('zrot' in bone){
+      bones[index].rotation.z = bone.zrot;
+    }
+  });
+}
+
 function parseGLTF(gltf){
-    // Instantiate a loader
-    var loader = new GLTFLoader();
-  
-    // Load a glTF resource
-    loader.parse(
-      // resource URL
-      gltf,
-      //Where subsequent glTF resources will load from, genuinely don't know what this means
-      "/",
-      // called when the resource is loaded
-      doneLoading,
-      // called while loading is progressing
-      function ( xhr ) {
-  
-        console.log( ( xhr.loaded / xhr.total * 100 ) + '% loaded' );
-  
-      },
-      // called when loading has errors
-      function ( error ) {
-  
-        console.log( 'An error happened' );
-  
-      }
-    );
-  
-  }
+  loadBonePosition(xbones, gltf.xbones);
+  loadBonePosition(ybones, gltf.ybones);
+}
 
 var link = document.createElement( 'a' );
 link.style.display = 'none';
