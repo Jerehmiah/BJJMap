@@ -9,6 +9,7 @@ require (
 	github.com/go-martini/martini v0.0.0-20170121215854-22fa46961aab
 	github.com/gorilla/sessions v1.2.1 // indirect
 	github.com/grandmore/mgosessions v0.0.0-20150123181001-361a1400b6a6
+	github.com/martini-contrib/binding v0.0.0-20160701174519-05d3e151b6cf
 	github.com/martini-contrib/render v0.0.0-20150707142108-ec18f8345a11
 	github.com/martini-contrib/sessions v0.0.0-20140630231722-fa13114fbcf0
 	github.com/oxtoacart/bpool v0.0.0-20190530202638-03653db5a59c // indirect

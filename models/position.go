@@ -10,5 +10,7 @@ type Position struct {
 	Public      bool           `bson:",omitempty" json:"public"`
 	Transitions []Position     `bson:",omitempty" form:"transitions" json:"transitions"`
 	Annotations []Annotation   `bson:",omitempty" form:"annotations" json:"annotations"`
-	GLTF        string         `form:"gltf" json:"gltf"`
+	BotColor    string         `bson:",omitempty" form:"botcolor" json:"botcolor"`
+	Origin      string         `bson:",omitempty" form:"origin" json:"origin"`
+	GLTF        string         `bson:",omitempty" form:"gltf" json:"gltf"`
 }

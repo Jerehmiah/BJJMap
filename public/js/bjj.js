@@ -22,7 +22,12 @@ let scene,
   uiSetup = false,
   xbotLoaded = false,
   annotationList =[],
+  annotationUi,
+  galleryUse,
+  corePoses ={},
+  addingAnnotation = false,
   wrapper = document.getElementById("wrapper"),
+  gallery = document.getElementById("core-gallery"),
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
 
 
@@ -67,64 +72,6 @@ function newDirectedLight(){
     return dirLight;
 }
 
-function makeNumberSprite(){
-    var numCanvas = document.getElementById("number");
-    const ctx = numCanvas.getContext('2d');
-    const x = 32;
-    const y = 32;
-    const radius = 30;
-    const startAngle = 0;
-    const endAngle = Math.PI * 2;
-
-    ctx.fillStyle = 'rgb(0, 0, 0)';
-    ctx.beginPath();
-    ctx.arc(x, y, radius, startAngle, endAngle);
-    ctx.fill();
-
-    ctx.strokeStyle = 'rgb(255, 255, 255)';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, startAngle, endAngle);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgb(255, 255, 255)';
-    ctx.font = '32px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(`${annotationList.length + 1}`, x, y);
-
-    const numberTexture = new THREE.CanvasTexture(
-        document.querySelector('#number')
-    );
-    
-    const spriteMaterial = new THREE.SpriteMaterial({
-        map: numberTexture,
-        alphaTest: 0.5,
-        transparent: true,
-        depthTest: false,
-        depthWrite: false
-    });
-    
-    return new THREE.Sprite(spriteMaterial);
-}
-
-function newAnnotation(position){
-    sprite = makeNumberSprite();
-    sprite.position.set(position.x, position.y, position.z);
-    sprite.scale.set(10, 10, 1);
-    
-    scene.add(sprite);
-
-
-    var annotation = document.querySelector(".annotation");
-    annotation = annotation.cloneNode(true);
-    annotation.id = `annotation${annotationList.length+1}`
-    wrapper.appendChild(annotation);
-    annotation.style.opacity = 1;
-    annotationList.push({vector:position,element:annotation});    
-}
-
-
 window.bjjInit= function(user) {
     fbuser = user;
   // Init the scene
@@ -154,11 +101,28 @@ window.bjjInit= function(user) {
   } );
 
   document.getElementById( 'load_scene' ).addEventListener( 'click', function () {
-
-    importGLTF('models/scene/closed_guard.gltf', false);
+    loadStandardPose('halfguard');
+    //importGLTF('models/scene/closed_guard.gltf', false);
 
 
   } );
+
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = ()=>{
+      if (xhttp.readyState == 4 && xhttp.status === 200){
+          console.log(xhttp.responseText);
+          var poses = JSON.parse(xhttp.responseText);
+          poses.forEach(pose => {
+            addPoseToGallery(pose);
+          });
+      } 
+    };
+
+    xhttp.open("GET", "/api/positions/1/core", true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.send();
+  });
 
   importGLTF('models/scene/closed_guard.gltf', true);  
   update();
@@ -168,76 +132,106 @@ window.bjjInit= function(user) {
   window.addEventListener('touchend', e => raycast(e, true));
 }
 
-function exportGLTF(scene){
+function addPoseToGallery(pose){
+  corePoses[pose.name] = {
+    "gltf": JSON.parse(pose.gltf),
+    "thumb":pose.thumb,
+    "botcolor":pose.botcolor,
+    "description":pose.description
+  };
+  var poseThumb = document.querySelector(".gallery");
+  poseThumb = poseThumb.cloneNode(true);
+  poseThumb.style.visibility = "visible";
+  poseThumb.id = `thumb_${pose.name}`;
+  
+  var anchor = poseThumb.children[0];
+  anchor.target ="blank";
+  anchor.href = pose.thumb;
+  
+  var thumbImg = anchor.children[0];
+  thumbImg.src = pose.thumb;
+  thumbImg.alt = pose.description;
+
+  poseThumb.children[1].innerHTML= pose.description;
+
+  poseThumb.onclick = () => {galleryItemSelection(pose);}
+
+  gallery.appendChild(poseThumb);
+}
+
+function showGallery(){
+  wrapper.style.visibility = "hidden";
+  gallery.style.visibility = "visible";
+}
+
+function hideGallery(){
+  wrapper.style.visibility = "visible";
+  gallery.style.visibility = "hidden";
+}
+
+function galleryItemSelection(pose){
+  switch(galleryUse){
+    case 'setBase':
+      createPositionForBase(pose);
+      break;
+    default:
+
+  }
+  hideGallery();
+  galleryUse = "";
+}
+
+function createPositionForBase(pose){
   fbuser.getIdToken().then(function(accessToken) {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = ()=>{
         if (xhttp.readyState == 4){
-            console.log(xhttp.status)
-        }
+          if(xhttp.status === 201){
+            console.log(xhttp.responseText);
+            var responseBody = JSON.parse(xhttp.responseText);
+            setBasePosition(responseBody.id);
+          } else {
+            console.log("Problem adding position");
+          }
+        }   
     };
-
-    xhttp.open("POST", "/api/positions/1/base", true);
+    xhttp.open("POST", "/api/positions/1/", true);
     xhttp.setRequestHeader("token", accessToken);
     xhttp.setRequestHeader("Content-Type", "application/json");
+    var httpBody = {
+      botColor: pose.botcolor,
+      origin: pose.name
+    }
 
-    var xbody = JSON.stringify({
-        id: "",
-        owner: "",
-        public: false,
-        gltf: JSON.stringify(figureOutDeltas())
+    xhttp.send(JSON.stringify(httpBody));
     });
-    console.log(xbody);
-    xhttp.send(xbody);
-
-   
-  });
+    loadStandardPose(pose.name);
 }
 
-function figureOutDeltas(){
-  var xBotBones = [];
-  xbones.forEach(bone=>{
-    xBotBones.push(boneInfo(bone));
-  });
-  var yBotBones = [];
-  ybones.forEach(bone=>{
-    yBotBones.push(boneInfo(bone))
-  });
-  
-  return {xbones:xBotBones, ybones:yBotBones};
+function setBasePosition(positionId){
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = ()=>{
+        if (xhttp.readyState == 4){
+          if(xhttp.status === 200){
+            console.log(xhttp.responseText);
+            var responseBody = JSON.parse(xhttp.responseText);
+            
+          } else {
+            console.log("Problem adding position");
+          }
+        }   
+    };
+    xhttp.open("POST", "/api/positions/1/base/", true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+    var httpBody = {
+      Id: positionId
+    }
+
+    xhttp.send(JSON.stringify(httpBody));
+    });
 }
-
-function boneInfo(bone){
-  var boneData = {
-    name:bone.name
-  }
-  if(bone.name.includes("mixamorigHips")){
-    boneData.x=bone.position.x,
-    boneData.y=bone.position.y,
-    boneData.z=bone.position.z
-  }
-  if(bone.rotation.x > 0){
-    boneData.xrot=bone.rotation.x
-  }
-  if(bone.rotation.y > 0){
-    boneData.yrot=bone.rotation.y
-  }
-  if(bone.rotation.z > 0){
-    boneData.zrot=bone.rotation.z
-  }
-
-  return boneData;
-}
-
-function isXbotBone(o){
-  let isXBot = false;
-   o.traverseAncestors(obj=>{
-     if (isXBot || obj.userData.name=="xbot"){
-       isXBot = true;
-     }
-   });
-   return isXBot;
- }
 
 function doneLoading( gltf ){
   doLoadInit(gltf);
@@ -248,15 +242,20 @@ function doneLoadingAndGetBase(gltf){
   fbuser.getIdToken().then(function(accessToken) {
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = ()=>{
-        if (xhttp.readyState == 4 && xhttp.status === 200){
+        if (xhttp.readyState == 4){
+          if(xhttp.status === 200){
             console.log(xhttp.responseText);
             var responseBody = JSON.parse(xhttp.responseText);
             if(responseBody.gltf){
                 parseGLTF(JSON.parse(responseBody.gltf));
             } else {
-                importGLTF('models/scene/closed_guard.gltf', false);
+                parseGLTF(corePoses[responseBody.origin].gltf, false);
             }
-        } 
+          } else {
+            galleryUse = "setBase";
+            showGallery();
+          } 
+        }   
     };
 
     xhttp.open("GET", "/api/positions/1/base", true);
@@ -294,6 +293,124 @@ function doLoadInit(gltf){
     uiSetup = false;
     xbotLoaded = true;
 }
+
+function loadStandardPose(name){
+  parseGLTF(corePoses[name].gltf);
+}
+
+
+function exportGLTF(scene){
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    
+
+    xhttp.open("POST", "/api/positions/1/core", true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+
+    var name = document.getElementById( "posName").value;
+    var thumb = document.getElementById( "thumb" ).value;
+    var boneCollection = figureOutDeltas();
+
+
+    xhttp.onreadystatechange = ()=>{
+      if (xhttp.readyState == 4){
+        console.log(xhttp.status);
+        xhttp.onreadystatechange = ()=>{
+          if (xhttp.readyState == 4){
+              console.log(xhttp.status);
+          }  
+        };
+        swapBots(boneCollection);
+        xhttp.open("POST", "/api/positions/1/core", true);
+        xhttp.setRequestHeader("token", accessToken);
+        xhttp.setRequestHeader("Content-Type", "application/json");
+
+        var xbody = JSON.stringify({
+          id: "",
+          name: name,
+          thumb: thumb,
+          botcolor: "red",
+          gltf: JSON.stringify(boneCollection)
+        });
+        console.log(xbody);
+        xhttp.send(xbody);
+      }
+    };
+    var xbody = JSON.stringify({
+        id: "",
+        name: name,
+        thumb: thumb,
+        botcolor: "blue",
+        gltf: JSON.stringify(boneCollection)
+    });
+    console.log(xbody);
+    xhttp.send(xbody);
+  });
+}
+
+function swapBots(boneCollection){
+  var newXbones = [];
+  var newYbones = [];
+
+  boneCollection.xbones.forEach((bone, index) => {
+    var tmpName = bone.name;
+    var tmpBone = boneCollection.ybones[index];
+    bone.name = tmpBone.name;
+    newYbones.push(bone);
+    tmpBone.name = tmpName;
+    newXbones.push(tmpBone);
+  });
+  boneCollection.xbones = newXbones;
+  boneCollection.ybones = newYbones;
+}
+
+function figureOutDeltas(){
+  var xBotBones = [];
+  xbones.forEach(bone=>{
+    xBotBones.push(boneInfo(bone));
+  });
+  var yBotBones = [];
+  ybones.forEach(bone=>{
+    yBotBones.push(boneInfo(bone))
+  });
+  
+  return {xbones:xBotBones, ybones:yBotBones};
+}
+
+function boneInfo(bone){
+  var boneData = {
+    name:bone.name
+  }
+  if(bone.name.includes("mixamorigHips")){
+    boneData.x=bone.position.x,
+    boneData.y=bone.position.y,
+    boneData.z=bone.position.z
+  }
+  if(bone.rotation.x != 0){
+    boneData.xrot=bone.rotation.x
+  }
+  if(bone.rotation.y != 0){
+    boneData.yrot=bone.rotation.y
+  }
+  if(bone.rotation.z != 0){
+    boneData.zrot=bone.rotation.z
+  }
+
+  return boneData;
+}
+
+function isXbotBone(o){
+  let isXBot = false;
+   o.traverseAncestors(obj=>{
+     if (isXBot || obj.userData.name=="xbot"){
+       isXBot = true;
+     }
+   });
+   return isXBot;
+ }
+
+
 
 function importGLTF(fileLocation, andLoadPosition){
   // Instantiate a loader
@@ -413,9 +530,6 @@ function addBoneUi(container, bones){
     folder.__controllers[ 0 ].name( "rotation.x" );
     folder.__controllers[ 1 ].name( "rotation.y" );
     folder.__controllers[ 2 ].name( "rotation.z" );
-
-
-
   }
 }  
 
@@ -437,15 +551,20 @@ function setupDatGui() {
     gui = new GUI();
     addBoneUi(gui.addFolder( "Blue Bot" ), ybones);
     addBoneUi(gui.addFolder( "Red Bot" ), xbones);
-    var options = {debug: showDebugControls,
-               logout: logout
-              }
+    
+    var options = {
+      annotations: toggleAnnotations,
+      debug: showDebugControls,
+      logout: logout,
+      addannotation: toggleAddingAnnotation,
+    }
+    gui.add(options, "annotations").name("Toggle Annotations");
+    gui.add(options, "addannotation").name("Add an annotation");
     gui.add(options, "debug").name("Show Debug");
     gui.add(options, "logout").name("Logout");
 
   }
 }
-
 
 function update() {
   positionAnnotations();
@@ -462,7 +581,71 @@ function onWindowResize() {
   renderer.setSize( window.innerWidth, window.innerHeight );
 }
 
+function makeNumberSprite(){
+  var numCanvas = document.getElementById("number");
+  const ctx = numCanvas.getContext('2d');
+  const x = 32;
+  const y = 32;
+  const radius = 30;
+  const startAngle = 0;
+  const endAngle = Math.PI * 2;
+
+  ctx.fillStyle = 'rgb(0, 0, 0)';
+  ctx.beginPath();
+  ctx.arc(x, y, radius, startAngle, endAngle);
+  ctx.fill();
+
+  ctx.strokeStyle = 'rgb(255, 255, 255)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(x, y, radius, startAngle, endAngle);
+  ctx.stroke();
+
+  ctx.fillStyle = 'rgb(255, 255, 255)';
+  ctx.font = '32px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${annotationList.length + 1}`, x, y);
+
+  const numberTexture = new THREE.CanvasTexture(
+      document.querySelector('#number')
+  );
+  
+  const spriteMaterial = new THREE.SpriteMaterial({
+      map: numberTexture,
+      alphaTest: 0.5,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false
+  });
+  
+  return new THREE.Sprite(spriteMaterial);
+}
+
+function toggleAddingAnnotation(){
+  addingAnnotation = !addingAnnotation;
+}
+
+function newAnnotation(position){
+  sprite = makeNumberSprite();
+  sprite.position.set(position.x, position.y, position.z);
+  sprite.scale.set(10, 10, 1);
+  
+  scene.add(sprite);
+
+
+  var annotation = document.querySelector(".annotation");
+  annotation = annotation.cloneNode(true);
+  annotation.id = `annotation${annotationList.length+1}`
+  wrapper.appendChild(annotation);
+  annotation.style.opacity = 1;
+  annotationList.push({vector:position,element:annotation,sprite:sprite});    
+}
+
 function raycast(e, touch = false) {
+  if(!addingAnnotation){
+    return;
+  }
   var mouse = {};
   if (touch) {
     mouse.x = 2 * (e.changedTouches[0].clientX / window.innerWidth) - 1;
@@ -481,7 +664,23 @@ function raycast(e, touch = false) {
     var position = intersects[0].point;
     console.log("click:"+getMousePos(e).x+","+getMousePos(e).y);
     newAnnotation(position);
+    addingAnnotation = false;
   }
+  
+}
+
+function toggleAnnotations(){
+  addingAnnotation = false;
+  annotationList.forEach(annotation => {
+    annotation.element.style.opacity = 1 - annotation.element.style.opacity;
+    if(annotation.sprite.parent === scene){
+      scene.remove(annotation.sprite);
+    }
+    else {
+      scene.add(annotation.sprite);
+    }
+
+  });
 }
 
 function positionAnnotations(){

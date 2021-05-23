@@ -28,8 +28,12 @@ func main() {
 
     m.Group("/api/positions/:version", func(r martini.Router){
         r.Get("/", positionController.GetAllPositions)
+        r.Post("/", binding.Bind(models.Position{}), positionController.AddPosition)
         r.Get("/base", positionController.GetBasePosition)
         r.Post("/base", binding.Bind(models.Position{}), positionController.SetBasePosition)
+        r.Get("/core", positionController.GetCorePositions)
+        r.Post("/core", binding.Bind(models.Coreposition{}),positionController.AddCorePosition)
+        r.Post("/:id/annotations", binding.Bind([]models.Annotation{}),positionController.SetAnnotations)
     }, auth.TokenAuth())
 
 

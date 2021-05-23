@@ -16,9 +16,25 @@
 <div id="firebaseui-auth-container"></div>
   <!-- The loading element overlays all else until the model is loaded, at which point we remove this element from the DOM -->  
 <div id="controls" class="debugControls">
+  <label for="posName">Position name:</label>
+  <input type="text" id="posName">
+  <label for="thumb">Thumb:</label>
+  <input type="text" id="thumb">
   <button id="save_scene">Save position</button>
+
   <button id="load_scene">Load position</button>
 </div>
+<div id="core-gallery">
+
+</div>
+<div id="gallery-template" class="gallery" style="visibility: hidden">
+  <a target="_blank" href="blank.jpg">
+    <img src="blank.jpg" alt="loading" width="600" height="400">
+  </a>
+  <div class="desc">still loading</div>
+</div>
+
+
 <div id="wrapper" class="wrapper">
   
     <!-- The canvas element is used to draw the 3D scene -->
