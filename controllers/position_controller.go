@@ -101,8 +101,9 @@ func (pc *PositionController) SetAnnotations(annotations []models.Annotation, us
     r.JSON(200, position)
 }
 
-func(pc *PositionController) AddPosition(position models.Position, r render.Render) {
+func(pc *PositionController) AddPosition(position models.Position, userInfo *auth.UserInfo, r render.Render) {
     position.Id = bson.NewObjectId()
+    position.Owner = userInfo.Email
     err := pc.positions.Insert(position)
     if err != nil {
         panic(err)

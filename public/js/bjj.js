@@ -13,24 +13,27 @@ let scene,
   camera,
   controls,
   sprite,
+  currentPosition,
   raycaster = new THREE.Raycaster(),  // Used to detect the click on our character
   gui = new GUI(),
-  xbot,
-  ybot,
   xbones =[],
   ybones =[],
   uiSetup = false,
   xbotLoaded = false,
   annotationList =[],
-  annotationUi,
   galleryUse,
   corePoses ={},
-  addingAnnotation = false,
   wrapper = document.getElementById("wrapper"),
   gallery = document.getElementById("core-gallery"),
+  annotationModal = document.getElementById("annotationModal"),
+  annotationClose = document.getElementsByClassName("modal-close")[0],
+  annotationEntry = document.getElementById("annotationEntry"),
+  touchListenerState,
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
 
-
+annotationClose.onclick = function() {
+  annotationModal.style.display = none;
+}
 
 
 function newScene(){
@@ -128,8 +131,23 @@ window.bjjInit= function(user) {
   update();
   onWindowResize();
   
-  window.addEventListener('click', e => raycast(e));
-  window.addEventListener('touchend', e => raycast(e, true));
+  window.addEventListener('click', e => handleScreenTouches(e));
+  window.addEventListener('touchend', e => handleScreenTouches(e, true));
+}
+
+function handleScreenTouches(event, touch){
+  switch(touchListenerState){
+    case 'addAnnotation':
+      raycast(event, touch);
+      break;
+    case 'annotationModalEntry':
+      if(event.target == annotationModal){
+        annotationModal.style.display = "none";
+        touchListenerState = "";
+      }
+      break;
+    default:
+  }
 }
 
 function addPoseToGallery(pose){
@@ -189,6 +207,7 @@ function createPositionForBase(pose){
           if(xhttp.status === 201){
             console.log(xhttp.responseText);
             var responseBody = JSON.parse(xhttp.responseText);
+            setCurrentPosition(responseBody);
             setBasePosition(responseBody.id);
           } else {
             console.log("Problem adding position");
@@ -205,7 +224,6 @@ function createPositionForBase(pose){
 
     xhttp.send(JSON.stringify(httpBody));
     });
-    loadStandardPose(pose.name);
 }
 
 function setBasePosition(positionId){
@@ -237,6 +255,20 @@ function doneLoading( gltf ){
   doLoadInit(gltf);
 }
 
+function setCurrentPosition(position){
+  currentPosition = position;
+  if(position.gltf){
+    parseGLTF(JSON.parse(position.gltf));
+  } else {
+    parseGLTF(corePoses[position.origin].gltf);
+  }
+  if(position.annotations){
+    position.annotations.forEach(annotation => {
+      addAnnotationToScene(annotation);
+    });
+  }
+}
+
 function doneLoadingAndGetBase(gltf){
   doLoadInit(gltf);
   fbuser.getIdToken().then(function(accessToken) {
@@ -246,11 +278,7 @@ function doneLoadingAndGetBase(gltf){
           if(xhttp.status === 200){
             console.log(xhttp.responseText);
             var responseBody = JSON.parse(xhttp.responseText);
-            if(responseBody.gltf){
-                parseGLTF(JSON.parse(responseBody.gltf));
-            } else {
-                parseGLTF(corePoses[responseBody.origin].gltf, false);
-            }
+            setCurrentPosition(responseBody);
           } else {
             galleryUse = "setBase";
             showGallery();
@@ -267,12 +295,7 @@ function doneLoadingAndGetBase(gltf){
 function doLoadInit(gltf){
     newScene();
     gltf.scene.traverse( o=>{
-    if(o.userData.name=="xbot"){
-        xbot = o;
-    }
-    if(o.userData.name=="ybot"){
-        ybot = o;
-    }
+    
     if (o.isBone && o.userData.transformData && !irrelevantBoneNames.includes(o.name)){
         
         if (isXbotBone(o) ){
@@ -623,29 +646,65 @@ function makeNumberSprite(){
 }
 
 function toggleAddingAnnotation(){
-  addingAnnotation = !addingAnnotation;
+  touchListenerState = touchListenerState == "addAnnotation" ? "": "addAnnotation";
+  annotationEntry.value = "";
 }
 
 function newAnnotation(position){
+  annotationModal.style.display ="block";
+  touchListenerState = "annotationModalEntry"
+  document.getElementById("save_annotation").onclick = function(event){
+      annotationModal.style.display = "none";
+      touchListenerState = "";
+      var newAnnotation = {text:annotationEntry.value, vertex:position};
+      addAnnotationToScene(newAnnotation);
+        
+      if(!currentPosition.annotations){
+        currentPosition.annotations = [];
+      }
+      currentPosition.annotations.push(newAnnotation);
+      updateAnnotationsForPosition(currentPosition);
+  }
+
+}
+
+function addAnnotationToScene(annotation){
   sprite = makeNumberSprite();
-  sprite.position.set(position.x, position.y, position.z);
+  sprite.position.set(annotation.vertex.x, annotation.vertex.y, annotation.vertex.z);
   sprite.scale.set(10, 10, 1);
   
-  scene.add(sprite);
+  scene.add(sprite); 
+  var annotationElement = document.querySelector(".annotation");
+  annotationElement = annotationElement.cloneNode(true);
+  annotationElement.innerHTML = annotation.text;
+  annotationElement.id = `annotation${annotationList.length+1}`
+  wrapper.appendChild(annotationElement);
+  annotationElement.style.opacity = 1;
+  annotationList.push({vector:annotation.vertex,element:annotationElement,sprite:sprite}); 
+}
 
-
-  var annotation = document.querySelector(".annotation");
-  annotation = annotation.cloneNode(true);
-  annotation.id = `annotation${annotationList.length+1}`
-  wrapper.appendChild(annotation);
-  annotation.style.opacity = 1;
-  annotationList.push({vector:position,element:annotation,sprite:sprite});    
+function updateAnnotationsForPosition(position){
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    xhttp.onreadystatechange = ()=>{
+        if (xhttp.readyState == 4){
+          if(xhttp.status === 200){
+            console.log(xhttp.responseText);
+            var responseBody = JSON.parse(xhttp.responseText);
+            
+          } else {
+            console.log("Problem setting annotations");
+          }
+        }   
+    };
+    xhttp.open("POST", `/api/positions/1/${position.id}/annotations`, true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+    xhttp.send(JSON.stringify(position.annotations));
+    });
 }
 
 function raycast(e, touch = false) {
-  if(!addingAnnotation){
-    return;
-  }
   var mouse = {};
   if (touch) {
     mouse.x = 2 * (e.changedTouches[0].clientX / window.innerWidth) - 1;
@@ -664,13 +723,11 @@ function raycast(e, touch = false) {
     var position = intersects[0].point;
     console.log("click:"+getMousePos(e).x+","+getMousePos(e).y);
     newAnnotation(position);
-    addingAnnotation = false;
   }
   
 }
 
 function toggleAnnotations(){
-  addingAnnotation = false;
   annotationList.forEach(annotation => {
     annotation.element.style.opacity = 1 - annotation.element.style.opacity;
     if(annotation.sprite.parent === scene){
