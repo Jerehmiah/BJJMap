@@ -28,6 +28,7 @@ let scene,
   annotationModal = document.getElementById("annotationModal"),
   annotationClose = document.getElementsByClassName("modal-close")[0],
   annotationEntry = document.getElementById("annotationEntry"),
+  annotationFolder,
   touchListenerState,
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
 
@@ -344,20 +345,7 @@ function exportGLTF(scene){
               console.log(xhttp.status);
           }  
         };
-        swapBots(boneCollection);
-        xhttp.open("POST", "/api/positions/1/core", true);
-        xhttp.setRequestHeader("token", accessToken);
-        xhttp.setRequestHeader("Content-Type", "application/json");
 
-        var xbody = JSON.stringify({
-          id: "",
-          name: name,
-          thumb: thumb,
-          botcolor: "red",
-          gltf: JSON.stringify(boneCollection)
-        });
-        console.log(xbody);
-        xhttp.send(xbody);
       }
     };
     var xbody = JSON.stringify({
@@ -566,6 +554,29 @@ function logout(){
         window.location.reload()});
 }
 
+function savePosition(){
+  fbuser.getIdToken().then(function(accessToken) {
+    var xhttp = new XMLHttpRequest();
+    
+    xhttp.open("POST", `/api/positions/1/${currentPosition.id}`, true);
+    xhttp.setRequestHeader("token", accessToken);
+    xhttp.setRequestHeader("Content-Type", "application/json");
+
+    currentPosition.gltf = JSON.stringify(figureOutDeltas());
+
+    xhttp.onreadystatechange = ()=>{
+      if (xhttp.readyState == 4){
+        console.log(xhttp.status);
+        
+
+      }
+    };
+    var xbody = JSON.stringify(currentPosition);
+    console.log(xbody);
+    xhttp.send(xbody);
+  });
+}
+
 function setupDatGui() {
   if(!uiSetup && xbotLoaded){
     uiSetup = true;
@@ -575,14 +586,18 @@ function setupDatGui() {
     addBoneUi(gui.addFolder( "Blue Bot" ), ybones);
     addBoneUi(gui.addFolder( "Red Bot" ), xbones);
     
+    annotationFolder = gui.addFolder("Annotations");
+
     var options = {
       annotations: toggleAnnotations,
       debug: showDebugControls,
       logout: logout,
       addannotation: toggleAddingAnnotation,
+      saveposition: savePosition,
     }
     gui.add(options, "annotations").name("Toggle Annotations");
     gui.add(options, "addannotation").name("Add an annotation");
+    gui.add(options, "saveposition").name("Save position");
     gui.add(options, "debug").name("Show Debug");
     gui.add(options, "logout").name("Logout");
 
@@ -605,7 +620,7 @@ function onWindowResize() {
 }
 
 function makeNumberSprite(){
-  var numCanvas = document.getElementById("number");
+  var numCanvas = document.getElementById("number").cloneNode(true);
   const ctx = numCanvas.getContext('2d');
   const x = 32;
   const y = 32;
@@ -631,7 +646,7 @@ function makeNumberSprite(){
   ctx.fillText(`${annotationList.length + 1}`, x, y);
 
   const numberTexture = new THREE.CanvasTexture(
-      document.querySelector('#number')
+      numCanvas
   );
   
   const spriteMaterial = new THREE.SpriteMaterial({
@@ -670,6 +685,7 @@ function newAnnotation(position){
 
 function addAnnotationToScene(annotation){
   sprite = makeNumberSprite();
+  var spriteNumber = annotationList.length+1;
   sprite.position.set(annotation.vertex.x, annotation.vertex.y, annotation.vertex.z);
   sprite.scale.set(10, 10, 1);
   
@@ -677,11 +693,31 @@ function addAnnotationToScene(annotation){
   var annotationElement = document.querySelector(".annotation");
   annotationElement = annotationElement.cloneNode(true);
   annotationElement.innerHTML = annotation.text;
-  annotationElement.id = `annotation${annotationList.length+1}`
+  annotationElement.id = `annotation${spriteNumber}`
   wrapper.appendChild(annotationElement);
   annotationElement.style.opacity = 1;
-  annotationList.push({vector:annotation.vertex,element:annotationElement,sprite:sprite}); 
+  var annotationPtr = {base:annotation, vector:annotation.vertex,element:annotationElement,sprite:sprite, index:spriteNumber-1};
+  annotationList.push(annotationPtr); 
+
+  annotationPtr.guiFolder = annotationFolder.addFolder(`Annotation ${spriteNumber}`);
+  annotationPtr.guiFolder.add(annotation, "text").onChange(()=>{updatePositionsAnnotation(annotationPtr)});
+  annotationPtr.guiFolder.add({x:()=>{ removeAnnotation(annotationPtr)}},"x").name("Remove");
 }
+
+function removeAnnotation(annotationPtr){
+  currentPosition.annotations.splice(annotationPtr.index,1);
+  updateAnnotationsForPosition(currentPosition);
+  scene.remove(annotationPtr.sprite);
+  annotationPtr.element.parentNode.removeChild(annotationPtr.element);
+  annotationFolder.remove(annotationPtr.guiFolder);
+}
+
+function updatePositionsAnnotation(annotationPtr){
+  annotationPtr.element.innerHTML = annotationPtr.base.text;
+  updateAnnotationsForPosition(currentPosition);
+}
+
+
 
 function updateAnnotationsForPosition(position){
   fbuser.getIdToken().then(function(accessToken) {

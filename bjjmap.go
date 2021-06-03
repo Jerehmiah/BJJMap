@@ -33,6 +33,8 @@ func main() {
         r.Post("/base", binding.Bind(models.Position{}), positionController.SetBasePosition)
         r.Get("/core", positionController.GetCorePositions)
         r.Post("/core", binding.Bind(models.Coreposition{}),positionController.AddCorePosition)
+        r.Post("/:id", binding.Bind(models.Position{}), positionController.SavePosition)
+        r.Get("/:id", positionController.GetPosition)
         r.Post("/:id/annotations", binding.Bind([]models.Annotation{}),positionController.SetAnnotations)
     }, auth.TokenAuth())
 

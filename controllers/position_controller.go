@@ -82,6 +82,18 @@ func (pc *PositionController) GetAllPositions(userInfo *auth.UserInfo, r render.
     r.JSON(200, positions)
 }
 
+func (pc *PositionController) GetPosition(userInfo *auth.UserInfo, params martini.Params, r render.Render) {
+    objId := bson.ObjectIdHex(params["id"])
+    position := models.Position{}
+    pc.positions.Find(bson.M{"_id":objId,"owner":userInfo.Email}).One(&position)
+    if !position.Id.Valid() {
+        fmt.Printf("Could not find position %s owned by %s\n", objId, userInfo.Email)
+        r.JSON(404, "Not found")
+        return
+    }
+    r.JSON(200, position)
+}
+
 func (pc *PositionController) SetAnnotations(annotations []models.Annotation, userInfo *auth.UserInfo, params martini.Params, r render.Render){
     objId := bson.ObjectIdHex(params["id"])
     position := models.Position{}
@@ -110,6 +122,28 @@ func(pc *PositionController) AddPosition(position models.Position, userInfo *aut
     }
     r.JSON(201, position)
 }
+
+func(pc *PositionController) SavePosition(position models.Position, userInfo *auth.UserInfo, params martini.Params, r render.Render) {
+    objId := bson.ObjectIdHex(params["id"])
+    pos := models.Position{}
+    pc.positions.Find(bson.M{"_id":objId, "owner":userInfo.Email}).One(&pos)
+    if(!position.Id.Valid()){
+        fmt.Printf("Could not find position %s owned by %s\n", objId, userInfo.Email)
+        r.JSON(404, "Not found")
+        return
+    }
+
+    pos.GLTF = position.GLTF
+    pos.Transitions = position.Transitions
+
+    _, err := pc.positions.UpsertId(objId, pos)
+    if err != nil {
+        panic(err)
+    }
+
+    r.JSON(200, pos)
+}
+
 
 func(pc *PositionController) AddCorePosition(position models.Coreposition, r render.Render) {
     position.Id = bson.NewObjectId()
