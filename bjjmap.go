@@ -36,6 +36,7 @@ func main() {
         r.Post("/:id", binding.Bind(models.Position{}), positionController.SavePosition)
         r.Get("/:id", positionController.GetPosition)
         r.Post("/:id/annotations", binding.Bind([]models.Annotation{}),positionController.SetAnnotations)
+        r.Post("/:id/transitions", binding.Bind([]models.Position{}), positionController.SetTransitions)
     }, auth.TokenAuth())
 
 

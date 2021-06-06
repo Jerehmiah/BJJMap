@@ -2,43 +2,36 @@ import {OrbitControls} from 'https://threejs.org/examples/jsm/controls/OrbitCont
 import * as THREE from 'https://threejs.org/build/three.module.js'
 import {GUI} from 'https://threejs.org/examples/jsm/libs/dat.gui.module.js'
 import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
-
+import * as BJJANNOTATIONS from '/js/annotations.js'
+import {Requestor} from '/js/bjjrequests.js'
 
 // Set our main variables
 const canvas = document.querySelector('#c');
 const backgroundColor = 0xfff1f1;
 let scene,
-  fbuser, //our firebase user
   renderer,
   camera,
   controls,
-  sprite,
   currentPosition,
-  raycaster = new THREE.Raycaster(),  // Used to detect the click on our character
   gui = new GUI(),
   xbones =[],
   ybones =[],
   uiSetup = false,
   xbotLoaded = false,
-  annotationList =[],
-  galleryUse,
   corePoses ={},
   wrapper = document.getElementById("wrapper"),
   gallery = document.getElementById("core-gallery"),
-  annotationModal = document.getElementById("annotationModal"),
-  annotationClose = document.getElementsByClassName("modal-close")[0],
-  annotationEntry = document.getElementById("annotationEntry"),
-  annotationFolder,
-  touchListenerState,
-  irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"];
-
-annotationClose.onclick = function() {
-  annotationModal.style.display = none;
-}
+  galleryHeader = document.getElementById("gallery-header"),
+  galleryUse,
+  touchListener ={},
+  irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"],
+  refInfo={scene:scene,renderer:renderer, camera:camera, currentPosition:currentPosition},
+  requestor;
 
 
 function newScene(){
     scene = new THREE.Scene();
+    refInfo.scene = scene;
     scene.background = new THREE.Color(backgroundColor);
       // Add lights
     scene.add(newHemiLight());
@@ -50,6 +43,7 @@ function newScene(){
 
 function newRenderer(){
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    refInfo.renderer = renderer;
     renderer.shadowMap.enabled = true;
     renderer.setPixelRatio(window.devicePixelRatio);
     // wrapper.appendChild(renderer.domElement);
@@ -77,7 +71,8 @@ function newDirectedLight(){
 }
 
 window.bjjInit= function(user) {
-    fbuser = user;
+    requestor = new Requestor(user);
+    refInfo.requestor = requestor;
   // Init the scene
   newScene();
   // Init the renderer
@@ -89,11 +84,10 @@ window.bjjInit= function(user) {
     0.1,
     1000
   );
+  refInfo.camera = camera;
   camera.position.z = 300
   camera.position.x = 100;
   camera.position.y = 75;
-
-
 
   //Add orbit controls to camera
   controls = new OrbitControls( camera, renderer.domElement );
@@ -103,7 +97,7 @@ window.bjjInit= function(user) {
   document.getElementById( 'save_scene' ).addEventListener( 'click', function () {
     exportGLTF( scene );
   } );
-
+  BJJANNOTATIONS.init(refInfo, touchListener);
   document.getElementById( 'load_scene' ).addEventListener( 'click', function () {
     loadStandardPose('halfguard');
     //importGLTF('models/scene/closed_guard.gltf', false);
@@ -111,22 +105,12 @@ window.bjjInit= function(user) {
 
   } );
 
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = ()=>{
-      if (xhttp.readyState == 4 && xhttp.status === 200){
-          console.log(xhttp.responseText);
-          var poses = JSON.parse(xhttp.responseText);
-          poses.forEach(pose => {
-            addPoseToGallery(pose);
-          });
-      } 
-    };
-
-    xhttp.open("GET", "/api/positions/1/core", true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.send();
-  });
+  requestor.doGet("/api/positions/1/core", {
+    '200':poses =>{
+      poses.forEach(pose => {
+        addPoseToGallery(pose);
+      });
+    }});
 
   importGLTF('models/scene/closed_guard.gltf', true);  
   update();
@@ -137,14 +121,14 @@ window.bjjInit= function(user) {
 }
 
 function handleScreenTouches(event, touch){
-  switch(touchListenerState){
+  switch(touchListener.state){
     case 'addAnnotation':
-      raycast(event, touch);
+      BJJANNOTATIONS.raycast(event, touch);
       break;
     case 'annotationModalEntry':
       if(event.target == annotationModal){
         annotationModal.style.display = "none";
-        touchListenerState = "";
+        touchListener.state = "";
       }
       break;
     default:
@@ -181,6 +165,16 @@ function addPoseToGallery(pose){
 function showGallery(){
   wrapper.style.visibility = "hidden";
   gallery.style.visibility = "visible";
+  switch(galleryUse){
+    case 'setBase':
+      galleryHeader.innerHTML = "You don't have a base position.  Choose one to start.";
+      break;
+    case 'addTransition':
+      galleryHeader.innerHTML = "Choose a base position to add for your transition.";
+      break;
+    default:
+
+  }
 }
 
 function hideGallery(){
@@ -193,6 +187,9 @@ function galleryItemSelection(pose){
     case 'setBase':
       createPositionForBase(pose);
       break;
+    case 'addTransition':
+      addTransition(pose);
+      break;
     default:
 
   }
@@ -200,56 +197,54 @@ function galleryItemSelection(pose){
   galleryUse = "";
 }
 
-function createPositionForBase(pose){
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = ()=>{
-        if (xhttp.readyState == 4){
-          if(xhttp.status === 201){
-            console.log(xhttp.responseText);
-            var responseBody = JSON.parse(xhttp.responseText);
-            setCurrentPosition(responseBody);
-            setBasePosition(responseBody.id);
-          } else {
-            console.log("Problem adding position");
-          }
-        }   
-    };
-    xhttp.open("POST", "/api/positions/1/", true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.setRequestHeader("Content-Type", "application/json");
-    var httpBody = {
-      botColor: pose.botcolor,
-      origin: pose.name
+function addTransition(pose){
+  createPositionWithPose(pose, (responseBody)=>{
+    if(!currentPosition.transitions){
+      currentPosition.transitions = [];
     }
-
-    xhttp.send(JSON.stringify(httpBody));
-    });
+    currentPosition.transitions.push(responseBody);
+    setTransitionsForPosition(currentPosition);
+  });
 }
 
-function setBasePosition(positionId){
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = ()=>{
-        if (xhttp.readyState == 4){
-          if(xhttp.status === 200){
-            console.log(xhttp.responseText);
-            var responseBody = JSON.parse(xhttp.responseText);
-            
-          } else {
-            console.log("Problem adding position");
-          }
-        }   
-    };
-    xhttp.open("POST", "/api/positions/1/base/", true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.setRequestHeader("Content-Type", "application/json");
-    var httpBody = {
-      Id: positionId
+function setTransitionsForPosition(position){
+  requestor.doPost(`/api/positions/1/${position.id}/transitions`, JSON.stringify(position.transitions), {
+    '200':()=>{
+      console.log("OK");
+    },
+    default: ()=>{
+      console.log('Problem setting transitions');
     }
+  });
+}
 
-    xhttp.send(JSON.stringify(httpBody));
-    });
+function createPositionForBase(pose){
+    createPositionWithPose(pose, (responseBody)=>{
+      setCurrentPosition(responseBody);
+      setBasePosition(responseBody.id);
+             
+  });
+}
+
+function createPositionWithPose(pose, onFinish){
+  requestor.doPost('/api/positions/1/', JSON.stringify({botColor: pose.botcolor,origin: pose.name}),{
+    '201':onFinish,
+    default: ()=>{
+      console.log("Problem adding position");
+    }
+  });
+}
+
+
+function setBasePosition(positionId){
+  requestor.doPost('/api/positions/1/base/', JSON.stringify({Id: positionId}), {
+    '200': ()=>{
+      console.log("OK");
+    },
+    default: ()=>{
+      console.log("Problem adding position");
+    }
+  } );
 }
 
 function doneLoading( gltf ){
@@ -258,6 +253,7 @@ function doneLoading( gltf ){
 
 function setCurrentPosition(position){
   currentPosition = position;
+  refInfo.currentPosition = currentPosition;
   if(position.gltf){
     parseGLTF(JSON.parse(position.gltf));
   } else {
@@ -265,32 +261,23 @@ function setCurrentPosition(position){
   }
   if(position.annotations){
     position.annotations.forEach(annotation => {
-      addAnnotationToScene(annotation);
+      BJJANNOTATIONS.addAnnotationToScene(annotation);
     });
   }
 }
 
 function doneLoadingAndGetBase(gltf){
   doLoadInit(gltf);
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = ()=>{
-        if (xhttp.readyState == 4){
-          if(xhttp.status === 200){
-            console.log(xhttp.responseText);
-            var responseBody = JSON.parse(xhttp.responseText);
-            setCurrentPosition(responseBody);
-          } else {
-            galleryUse = "setBase";
-            showGallery();
-          } 
-        }   
-    };
-
-    xhttp.open("GET", "/api/positions/1/base", true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.send();
-    });
+  requestor.doGet('/api/positions/1/base', {
+    '200': base => {
+        console.log(base);
+        setCurrentPosition(base);
+    },
+    default: () => {
+      galleryUse = "setBase";
+      showGallery();
+    }
+  });
 }
 
 function doLoadInit(gltf){
@@ -324,40 +311,15 @@ function loadStandardPose(name){
 
 
 function exportGLTF(scene){
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    
-
-    xhttp.open("POST", "/api/positions/1/core", true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.setRequestHeader("Content-Type", "application/json");
-
-    var name = document.getElementById( "posName").value;
-    var thumb = document.getElementById( "thumb" ).value;
-    var boneCollection = figureOutDeltas();
-
-
-    xhttp.onreadystatechange = ()=>{
-      if (xhttp.readyState == 4){
-        console.log(xhttp.status);
-        xhttp.onreadystatechange = ()=>{
-          if (xhttp.readyState == 4){
-              console.log(xhttp.status);
-          }  
-        };
-
-      }
-    };
-    var xbody = JSON.stringify({
-        id: "",
-        name: name,
-        thumb: thumb,
-        botcolor: "blue",
-        gltf: JSON.stringify(boneCollection)
-    });
-    console.log(xbody);
-    xhttp.send(xbody);
-  });
+  requestor.doPost('/api/positions/1/core', JSON.stringify({
+    id: "",
+    name: document.getElementById( "posName").value,
+    thumb: document.getElementById( "thumb" ).value,
+    botcolor: "blue",
+    gltf: JSON.stringify(figureOutDeltas())
+  }), {'200':()=>{
+        console.log('OK');
+  }});
 }
 
 function swapBots(boneCollection){
@@ -555,26 +517,12 @@ function logout(){
 }
 
 function savePosition(){
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    
-    xhttp.open("POST", `/api/positions/1/${currentPosition.id}`, true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.setRequestHeader("Content-Type", "application/json");
-
-    currentPosition.gltf = JSON.stringify(figureOutDeltas());
-
-    xhttp.onreadystatechange = ()=>{
-      if (xhttp.readyState == 4){
-        console.log(xhttp.status);
-        
-
-      }
-    };
-    var xbody = JSON.stringify(currentPosition);
-    console.log(xbody);
-    xhttp.send(xbody);
-  });
+  currentPosition.gltf = JSON.stringify(figureOutDeltas());
+  requestor.doPost(`/api/positions/1/${currentPosition.id}` ,JSON.stringify(currentPosition), {
+    '200': ()=>{
+      console.log('OK');
+    }
+  } );
 }
 
 function setupDatGui() {
@@ -585,27 +533,34 @@ function setupDatGui() {
     gui = new GUI();
     addBoneUi(gui.addFolder( "Blue Bot" ), ybones);
     addBoneUi(gui.addFolder( "Red Bot" ), xbones);
-    
-    annotationFolder = gui.addFolder("Annotations");
+
+    BJJANNOTATIONS.setAnnotationFolder(gui.addFolder("Annotations"));
 
     var options = {
-      annotations: toggleAnnotations,
+      annotations: BJJANNOTATIONS.toggleAnnotations,
       debug: showDebugControls,
       logout: logout,
-      addannotation: toggleAddingAnnotation,
+      addannotation: BJJANNOTATIONS.toggleAddingAnnotation,
       saveposition: savePosition,
+      addtransition: addNewTransition
     }
     gui.add(options, "annotations").name("Toggle Annotations");
     gui.add(options, "addannotation").name("Add an annotation");
     gui.add(options, "saveposition").name("Save position");
     gui.add(options, "debug").name("Show Debug");
+    gui.add(options, "addtransition").name("Add a transition");
     gui.add(options, "logout").name("Logout");
 
   }
 }
 
+function addNewTransition(){
+  galleryUse = "addTransition";
+  showGallery();
+}
+
 function update() {
-  positionAnnotations();
+  BJJANNOTATIONS.positionAnnotations();
   renderer.render(scene, camera);
   requestAnimationFrame(update);
   setupDatGui();
@@ -618,186 +573,3 @@ function onWindowResize() {
 
   renderer.setSize( window.innerWidth, window.innerHeight );
 }
-
-function makeNumberSprite(){
-  var numCanvas = document.getElementById("number").cloneNode(true);
-  const ctx = numCanvas.getContext('2d');
-  const x = 32;
-  const y = 32;
-  const radius = 30;
-  const startAngle = 0;
-  const endAngle = Math.PI * 2;
-
-  ctx.fillStyle = 'rgb(0, 0, 0)';
-  ctx.beginPath();
-  ctx.arc(x, y, radius, startAngle, endAngle);
-  ctx.fill();
-
-  ctx.strokeStyle = 'rgb(255, 255, 255)';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(x, y, radius, startAngle, endAngle);
-  ctx.stroke();
-
-  ctx.fillStyle = 'rgb(255, 255, 255)';
-  ctx.font = '32px sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(`${annotationList.length + 1}`, x, y);
-
-  const numberTexture = new THREE.CanvasTexture(
-      numCanvas
-  );
-  
-  const spriteMaterial = new THREE.SpriteMaterial({
-      map: numberTexture,
-      alphaTest: 0.5,
-      transparent: true,
-      depthTest: false,
-      depthWrite: false
-  });
-  
-  return new THREE.Sprite(spriteMaterial);
-}
-
-function toggleAddingAnnotation(){
-  touchListenerState = touchListenerState == "addAnnotation" ? "": "addAnnotation";
-  annotationEntry.value = "";
-}
-
-function newAnnotation(position){
-  annotationModal.style.display ="block";
-  touchListenerState = "annotationModalEntry"
-  document.getElementById("save_annotation").onclick = function(event){
-      annotationModal.style.display = "none";
-      touchListenerState = "";
-      var newAnnotation = {text:annotationEntry.value, vertex:position};
-      addAnnotationToScene(newAnnotation);
-        
-      if(!currentPosition.annotations){
-        currentPosition.annotations = [];
-      }
-      currentPosition.annotations.push(newAnnotation);
-      updateAnnotationsForPosition(currentPosition);
-  }
-
-}
-
-function addAnnotationToScene(annotation){
-  sprite = makeNumberSprite();
-  var spriteNumber = annotationList.length+1;
-  sprite.position.set(annotation.vertex.x, annotation.vertex.y, annotation.vertex.z);
-  sprite.scale.set(10, 10, 1);
-  
-  scene.add(sprite); 
-  var annotationElement = document.querySelector(".annotation");
-  annotationElement = annotationElement.cloneNode(true);
-  annotationElement.innerHTML = annotation.text;
-  annotationElement.id = `annotation${spriteNumber}`
-  wrapper.appendChild(annotationElement);
-  annotationElement.style.opacity = 1;
-  var annotationPtr = {base:annotation, vector:annotation.vertex,element:annotationElement,sprite:sprite, index:spriteNumber-1};
-  annotationList.push(annotationPtr); 
-
-  annotationPtr.guiFolder = annotationFolder.addFolder(`Annotation ${spriteNumber}`);
-  annotationPtr.guiFolder.add(annotation, "text").onChange(()=>{updatePositionsAnnotation(annotationPtr)});
-  annotationPtr.guiFolder.add({x:()=>{ removeAnnotation(annotationPtr)}},"x").name("Remove");
-}
-
-function removeAnnotation(annotationPtr){
-  currentPosition.annotations.splice(annotationPtr.index,1);
-  updateAnnotationsForPosition(currentPosition);
-  scene.remove(annotationPtr.sprite);
-  annotationPtr.element.parentNode.removeChild(annotationPtr.element);
-  annotationFolder.remove(annotationPtr.guiFolder);
-}
-
-function updatePositionsAnnotation(annotationPtr){
-  annotationPtr.element.innerHTML = annotationPtr.base.text;
-  updateAnnotationsForPosition(currentPosition);
-}
-
-
-
-function updateAnnotationsForPosition(position){
-  fbuser.getIdToken().then(function(accessToken) {
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = ()=>{
-        if (xhttp.readyState == 4){
-          if(xhttp.status === 200){
-            console.log(xhttp.responseText);
-            var responseBody = JSON.parse(xhttp.responseText);
-            
-          } else {
-            console.log("Problem setting annotations");
-          }
-        }   
-    };
-    xhttp.open("POST", `/api/positions/1/${position.id}/annotations`, true);
-    xhttp.setRequestHeader("token", accessToken);
-    xhttp.setRequestHeader("Content-Type", "application/json");
-    xhttp.send(JSON.stringify(position.annotations));
-    });
-}
-
-function raycast(e, touch = false) {
-  var mouse = {};
-  if (touch) {
-    mouse.x = 2 * (e.changedTouches[0].clientX / window.innerWidth) - 1;
-    mouse.y = 1 - 2 * (e.changedTouches[0].clientY / window.innerHeight);
-  } else {
-    mouse.x = 2 * (e.clientX / window.innerWidth) - 1;
-    mouse.y = 1 - 2 * (e.clientY / window.innerHeight);
-  }
-  // update the picking ray with the camera and mouse position
-  raycaster.setFromCamera(mouse, camera);
-
-  // calculate objects intersecting the picking ray
-  var intersects = raycaster.intersectObjects(scene.children, true);
-
-  if (intersects[0] && intersects[0].object.name.includes("Surface")) {
-    var position = intersects[0].point;
-    console.log("click:"+getMousePos(e).x+","+getMousePos(e).y);
-    newAnnotation(position);
-  }
-  
-}
-
-function toggleAnnotations(){
-  annotationList.forEach(annotation => {
-    annotation.element.style.opacity = 1 - annotation.element.style.opacity;
-    if(annotation.sprite.parent === scene){
-      scene.remove(annotation.sprite);
-    }
-    else {
-      scene.add(annotation.sprite);
-    }
-
-  });
-}
-
-function positionAnnotations(){
-    const canvas = renderer.domElement;
-    annotationList.forEach(annotationObj =>{
-        const position = annotationObj.vector;
-        var vector = new THREE.Vector3(position.x, position.y, position.z);
-        
-        const annotation = annotationObj.element;
-        vector.project(camera);
-
-        vector.x = Math.round((0.5 + vector.x / 2) * (canvas.width / window.devicePixelRatio));
-        vector.y = Math.round((0.5 - vector.y / 2) * (canvas.height / window.devicePixelRatio));
-    
-        annotation.style.top = `${vector.y}px`;
-        annotation.style.left = `${vector.x}px`;
-    
-        
-    });
-    
-}
-
-function getMousePos(e) {
-  return { x: e.clientX, y: e.clientY };
-}
-
-

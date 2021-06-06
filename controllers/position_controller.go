@@ -44,12 +44,14 @@ func (pc *PositionController) GetBasePosition(userInfo *auth.UserInfo, r render.
         r.JSON(404, "Not found")
         return
     }
+    pc.populateTransitionsForPosition(position)
     r.JSON(200, position)
 }
 
 func (pc *PositionController) SetBasePosition(position models.Position, userInfo *auth.UserInfo, r render.Render) {
     basePos := models.Baseposition{}
     positionIsValid := make(chan bool)
+    position.Owner = userInfo.Email
     go pc.validatePosition(position,positionIsValid)
 
     pc.basePositions.Find(bson.M{"owner":userInfo.Email}).One(&basePos)
@@ -91,8 +93,46 @@ func (pc *PositionController) GetPosition(userInfo *auth.UserInfo, params martin
         r.JSON(404, "Not found")
         return
     }
+    pc.populateTransitionsForPosition(position)
+
     r.JSON(200, position)
 }
+
+func (pc *PositionController) SetTransitions(transitions []models.Position, userInfo *auth.UserInfo, params martini.Params, r render.Render){
+    objId := bson.ObjectIdHex(params["id"])
+    positionIsValid := make(chan bool, len(transitions))
+    for _, transition := range transitions {
+        transition.Owner = userInfo.Email
+        go pc.validatePosition(transition, positionIsValid)
+    }
+    position := models.Position{}
+    pc.positions.Find(bson.M{"_id":objId, "owner":userInfo.Email}).One(&position)
+    if(!position.Id.Valid()){
+        fmt.Printf("Could not find position %s owned by %s\n", objId, userInfo.Email)
+        r.JSON(404, "Not found")
+        return
+    }
+
+    validSoFar := true
+    for range transitions {
+        validSoFar = validSoFar && <-positionIsValid
+    }
+    
+    if validSoFar{
+        minimizeTransitions(transitions)
+        position.Transitions = transitions
+        _, err := pc.positions.UpsertId(objId, position)
+        if err != nil {
+            panic(err)
+        }
+    } else {
+        fmt.Printf("No base position was changed as position passed was not valid")
+        r.JSON(404, "Not found")
+        return
+    }
+    r.JSON(200, position)    
+}
+
 
 func (pc *PositionController) SetAnnotations(annotations []models.Annotation, userInfo *auth.UserInfo, params martini.Params, r render.Render){
     objId := bson.ObjectIdHex(params["id"])
@@ -164,11 +204,38 @@ func(pc *PositionController) GetCorePositions(r render.Render) {
     r.JSON(200, positions)
 }
 
+func minimizeTransitions(transitions []models.Position){
+    for _, transition := range transitions{
+        transition.Owner = ""
+        transition.Transitions = nil
+        transition.Annotations = nil
+        transition.GLTF = ""
+        transition.Origin = ""
+        transition.BotColor = ""
+    }
+}
+
+func (pc *PositionController) populateTransitionsForPosition(position models.Position) {
+    positions := make([]models.Position, len(position.Transitions))
+    transitionIds := make([]bson.ObjectId, len(position.Transitions))
+    for i, transition := range position.Transitions{
+        transitionIds[i] = transition.Id
+    }
+    err := pc.positions.Find(bson.M{"_id":bson.M{"$in":transitionIds}}).All(&positions)
+    if err != nil {
+        panic(err)
+    }
+    for _, transition := range positions{
+        minimizeTransitions(transition.Transitions)
+    }
+    position.Transitions = positions
+}
+
 func (pc *PositionController) validatePosition(position models.Position, c chan bool){
     pos := models.Position{}
-    err := pc.positions.FindId(position.Id).One(&pos)
+    err := pc.positions.Find(bson.M{"_id":position.Id, "owner":position.Owner}).One(&pos)
     if err != nil || !pos.Id.Valid()  {
-        fmt.Printf("Passed position of  %s was not found\n", position.Id)
+        fmt.Printf("Passed position of  %s with owner %s was not found\n", position.Id, position.Owner)
         fmt.Printf("Error: %s\n", err)
         c <- false
         return
