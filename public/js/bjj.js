@@ -20,10 +20,12 @@ let scene,
   xbotLoaded = false,
   corePoses ={},
   wrapper = document.getElementById("wrapper"),
-  gallery = document.getElementById("core-gallery"),
+  coreGallery = document.getElementById("core-gallery"),
+  transitionGallery = document.querySelector(".transitions"),
   galleryHeader = document.getElementById("gallery-header"),
   galleryUse,
   touchListener ={},
+  
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"],
   refInfo={scene:scene,renderer:renderer, camera:camera, currentPosition:currentPosition},
   requestor;
@@ -105,6 +107,10 @@ window.bjjInit= function(user) {
 
   } );
 
+  document.getElementById( 'addTransition').addEventListener('click', function () {
+    addNewTransition();
+  });
+
   requestor.doGet("/api/positions/1/core", {
     '200':poses =>{
       poses.forEach(pose => {
@@ -159,12 +165,32 @@ function addPoseToGallery(pose){
 
   poseThumb.onclick = () => {galleryItemSelection(pose);}
 
-  gallery.appendChild(poseThumb);
+  coreGallery.appendChild(poseThumb);
 }
+
+function addTransitionToGallery(transition){
+  var transGalItem = document.getElementById("addTransition").cloneNode(true);
+
+  transGalItem.children[0].src = corePoses[transition.origin].thumb;
+  transGalItem.addEventListener('click', ()=> {
+    loadPositionFromServer(transition);
+  });
+  transGalItem.id = `transition${transitionGallery.children.length}`;
+  transitionGallery.appendChild(transGalItem);
+}
+
+function clearTransitionGallery(){
+  Array.from(transitionGallery.children).forEach((transitionNode)=>{
+    if(transitionNode.id != 'addTransition'){
+      transitionNode.parentNode.removeChild(transitionNode);
+    }
+  });
+}
+
 
 function showGallery(){
   wrapper.style.visibility = "hidden";
-  gallery.style.visibility = "visible";
+  coreGallery.style.visibility = "visible";
   switch(galleryUse){
     case 'setBase':
       galleryHeader.innerHTML = "You don't have a base position.  Choose one to start.";
@@ -179,7 +205,7 @@ function showGallery(){
 
 function hideGallery(){
   wrapper.style.visibility = "visible";
-  gallery.style.visibility = "hidden";
+  coreGallery.style.visibility = "hidden";
 }
 
 function galleryItemSelection(pose){
@@ -204,6 +230,7 @@ function addTransition(pose){
     }
     currentPosition.transitions.push(responseBody);
     setTransitionsForPosition(currentPosition);
+    addTransitionToGallery(responseBody)
   });
 }
 
@@ -263,6 +290,12 @@ function setCurrentPosition(position){
     position.annotations.forEach(annotation => {
       BJJANNOTATIONS.addAnnotationToScene(annotation);
     });
+  }
+  clearTransitionGallery();
+  if(position.transitions){
+    position.transitions.forEach(transition => {
+      addTransitionToGallery(transition);
+    })
   }
 }
 
@@ -383,7 +416,13 @@ function isXbotBone(o){
    return isXBot;
  }
 
-
+function loadPositionFromServer(position){
+  requestor.doGet(`/api/positions/1/${position.id}`, {
+    '200': (pos) => {
+      setCurrentPosition(pos);
+    }
+  });
+}
 
 function importGLTF(fileLocation, andLoadPosition){
   // Instantiate a loader
@@ -421,12 +460,18 @@ function loadBonePosition(bones, gltBones){
     }
     if ('xrot' in bone){
       bones[index].rotation.x = bone.xrot;
-    } 
+    } else {
+      bones[index].rotation.x = 0;
+    }
     if('yrot' in bone){
       bones[index].rotation.y = bone.yrot;
+    } else {
+      bones[index].rotation.y = 0;
     }
     if('zrot' in bone){
       bones[index].rotation.z = bone.zrot;
+    } else {
+      bones[index].rotation.z = 0;
     }
   });
 }
@@ -541,14 +586,12 @@ function setupDatGui() {
       debug: showDebugControls,
       logout: logout,
       addannotation: BJJANNOTATIONS.toggleAddingAnnotation,
-      saveposition: savePosition,
-      addtransition: addNewTransition
+      saveposition: savePosition
     }
     gui.add(options, "annotations").name("Toggle Annotations");
     gui.add(options, "addannotation").name("Add an annotation");
     gui.add(options, "saveposition").name("Save position");
     gui.add(options, "debug").name("Show Debug");
-    gui.add(options, "addtransition").name("Add a transition");
     gui.add(options, "logout").name("Logout");
 
   }
@@ -571,5 +614,5 @@ function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
 
-  renderer.setSize( window.innerWidth, window.innerHeight );
+  renderer.setSize( window.innerWidth, .8*window.innerHeight );
 }
