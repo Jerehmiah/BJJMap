@@ -21,8 +21,9 @@ let scene,
   corePoses ={},
   wrapper = document.getElementById("wrapper"),
   coreGallery = document.getElementById("core-gallery"),
-  transitionGallery = document.querySelector(".transitions"),
+  transitionGallery = document.getElementById("transitionGallery"),
   galleryHeader = document.getElementById("gallery-header"),
+  existingGallery= document.getElementById("existing-gallery"),
   galleryUse,
   touchListener ={},
   
@@ -116,7 +117,17 @@ window.bjjInit= function(user) {
       poses.forEach(pose => {
         addPoseToGallery(pose);
       });
+      requestor.doGet("/api/positions/1/", {
+        '200': existing=>{
+          existing.forEach(existPose=> {
+            addPositionToExistingGallery(existPose);
+          })
+        }
+      });
+    
     }});
+
+
 
   importGLTF('models/scene/closed_guard.gltf', true);  
   update();
@@ -152,12 +163,8 @@ function addPoseToGallery(pose){
   poseThumb = poseThumb.cloneNode(true);
   poseThumb.style.visibility = "visible";
   poseThumb.id = `thumb_${pose.name}`;
-  
-  var anchor = poseThumb.children[0];
-  anchor.target ="blank";
-  anchor.href = pose.thumb;
-  
-  var thumbImg = anchor.children[0];
+
+  var thumbImg = poseThumb.children[0];
   thumbImg.src = pose.thumb;
   thumbImg.alt = pose.description;
 
@@ -165,7 +172,29 @@ function addPoseToGallery(pose){
 
   poseThumb.onclick = () => {galleryItemSelection(pose);}
 
-  coreGallery.appendChild(poseThumb);
+  coreGallery.insertBefore(poseThumb, existingGallery);
+}
+
+function addPositionToExistingGallery(position){
+  var positionItem = document.getElementById("addTransition").cloneNode(true);
+
+  positionItem.children[0].src = corePoses[position.origin].thumb;
+  positionItem.addEventListener('click', ()=> {
+    addExistingPositionToCurrent(position);
+  });
+  positionItem.id = `position${existingGallery.children.length}`;
+  existingGallery.appendChild(positionItem);
+}
+
+function addExistingPositionToCurrent(position){
+  if(!currentPosition.transitions){
+    currentPosition.transitions = [];
+  }
+  currentPosition.transitions.push(position);
+  setTransitionsForPosition(currentPosition);
+  addTransitionToGallery(position);
+  hideGallery();
+  galleryUse = "";
 }
 
 function addTransitionToGallery(transition){
@@ -194,9 +223,11 @@ function showGallery(){
   switch(galleryUse){
     case 'setBase':
       galleryHeader.innerHTML = "You don't have a base position.  Choose one to start.";
+      existingGallery.style.visibility = "hidden";
       break;
     case 'addTransition':
       galleryHeader.innerHTML = "Choose a base position to add for your transition.";
+      existingGallery.style.visibility = "visible";
       break;
     default:
 
