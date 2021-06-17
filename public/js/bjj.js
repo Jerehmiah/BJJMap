@@ -379,6 +379,7 @@ function exportGLTF(scene){
     id: "",
     name: document.getElementById( "posName").value,
     thumb: document.getElementById( "thumb" ).value,
+    description: document.getElementById("description").value,
     botcolor: "blue",
     gltf: JSON.stringify(figureOutDeltas())
   }), {'200':()=>{
