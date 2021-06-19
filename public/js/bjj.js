@@ -24,6 +24,7 @@ let scene,
   transitionGallery = document.getElementById("transitionGallery"),
   galleryHeader = document.getElementById("gallery-header"),
   existingGallery= document.getElementById("existing-gallery"),
+  positionDescriptionEntry= document.getElementById("positionDescriptionEntry"),
   galleryUse,
   touchListener ={},
   
@@ -112,6 +113,10 @@ window.bjjInit= function(user) {
     addNewTransition();
   });
 
+  document.getElementById('save_description').addEventListener('click', updateDescription);
+  document.getElementById('gallery-cancel').addEventListener('click', hideGallery)
+
+
   requestor.doGet("/api/positions/1/core", {
     '200':poses =>{
       poses.forEach(pose => {
@@ -135,6 +140,8 @@ window.bjjInit= function(user) {
   
   window.addEventListener('click', e => handleScreenTouches(e));
   window.addEventListener('touchend', e => handleScreenTouches(e, true));
+
+  
 }
 
 function handleScreenTouches(event, touch){
@@ -161,7 +168,7 @@ function addPoseToGallery(pose){
   };
   var poseThumb = document.querySelector(".gallery");
   poseThumb = poseThumb.cloneNode(true);
-  poseThumb.style.visibility = "visible";
+  poseThumb.style.visibility = null;
   poseThumb.id = `thumb_${pose.name}`;
 
   var thumbImg = poseThumb.children[0];
@@ -179,6 +186,7 @@ function addPositionToExistingGallery(position){
   var positionItem = document.getElementById("addTransition").cloneNode(true);
 
   positionItem.children[0].src = corePoses[position.origin].thumb;
+  positionItem.children[1].innerHTML = position.description;
   positionItem.addEventListener('click', ()=> {
     addExistingPositionToCurrent(position);
   });
@@ -194,13 +202,13 @@ function addExistingPositionToCurrent(position){
   setTransitionsForPosition(currentPosition);
   addTransitionToGallery(position);
   hideGallery();
-  galleryUse = "";
 }
 
 function addTransitionToGallery(transition){
   var transGalItem = document.getElementById("addTransition").cloneNode(true);
 
   transGalItem.children[0].src = corePoses[transition.origin].thumb;
+  transGalItem.children[1].innerHTML = transition.description;
   transGalItem.addEventListener('click', ()=> {
     loadPositionFromServer(transition);
   });
@@ -236,7 +244,9 @@ function showGallery(){
 
 function hideGallery(){
   wrapper.style.visibility = "visible";
+  existingGallery.style.visibility = "hidden";
   coreGallery.style.visibility = "hidden";
+  galleryUse = "";
 }
 
 function galleryItemSelection(pose){
@@ -251,7 +261,6 @@ function galleryItemSelection(pose){
 
   }
   hideGallery();
-  galleryUse = "";
 }
 
 function addTransition(pose){
@@ -285,7 +294,7 @@ function createPositionForBase(pose){
 }
 
 function createPositionWithPose(pose, onFinish){
-  requestor.doPost('/api/positions/1/', JSON.stringify({botColor: pose.botcolor,origin: pose.name}),{
+  requestor.doPost('/api/positions/1/', JSON.stringify({botColor: pose.botcolor,origin: pose.name, description:`New ${pose.name}`}),{
     '201':onFinish,
     default: ()=>{
       console.log("Problem adding position");
@@ -328,6 +337,85 @@ function setCurrentPosition(position){
       addTransitionToGallery(transition);
     })
   }
+  positionDescriptionEntry.value = position.description;
+  updateGraph();
+}
+
+function getElementsForGraph(positions){
+  var nodes=[],edges=[];
+  positions.forEach((position,index)=>{
+    nodes.push({data:{id:position.id, description: position.description, position: position, weight:index}});
+    if(position.transitions){
+      position.transitions.forEach((transition)=>{
+        edges.push({data:{source:position.id,target:transition.id,directed:'true'}});
+      });
+    }
+  });
+  return {nodes:nodes, edges:edges};
+}
+
+function updateGraph(){
+  requestor.doGet('/api/positions/1/', {
+    '200': (positions) => {
+      var bjjgraph = window.bjjgraph = cytoscape({
+        container: document.getElementById('bjjgraph'),
+    
+        layout: {
+          name: 'avsdf',
+          nodeSeparation: 120
+        },
+    
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'label': 'data(description)',
+              'text-valign': 'center',
+              'color': '#000000',
+              'background-color': '#3a7ecf'
+            }
+          },
+    
+          {
+            selector: 'edge',
+            style: {
+              'width': 2,
+              'curve-style': 'bezier',
+              'line-color': '#3a7ecf',
+              'target-arrow-shape': 'triangle',
+              'target-arrow-color': '#3a7ecf',
+              'opacity': 0.5
+            }
+          }
+        ],
+        elements: getElementsForGraph(positions)
+      });
+      bjjgraph.on('select', 'node', (event)=>{
+        setCurrentPosition(event.target.data().position);
+        hideGraph();
+      });
+    }
+  });
+}
+
+function showGraph(){
+  wrapper.style.visibility = "hidden";
+  coreGallery.style.visibility = "hidden";
+  document.getElementById('bjjgraph').style.visibility = "visible";
+  
+}
+
+function hideGraph(){
+  wrapper.style.visibility = "visible";
+  coreGallery.style.visibility = "hidden";
+  document.getElementById('bjjgraph').style.visibility = "hidden";
+}
+
+
+
+function updateDescription(){
+  currentPosition.description = positionDescriptionEntry.value;
+  savePosition();
 }
 
 function doneLoadingAndGetBase(gltf){
@@ -618,12 +706,15 @@ function setupDatGui() {
       debug: showDebugControls,
       logout: logout,
       addannotation: BJJANNOTATIONS.toggleAddingAnnotation,
-      saveposition: savePosition
+      saveposition: savePosition,
+      showgraph: showGraph
     }
     gui.add(options, "annotations").name("Toggle Annotations");
     gui.add(options, "addannotation").name("Add an annotation");
+
     gui.add(options, "saveposition").name("Save position");
     gui.add(options, "debug").name("Show Debug");
+    gui.add(options, "showgraph").name("Show Graph");
     gui.add(options, "logout").name("Logout");
 
   }

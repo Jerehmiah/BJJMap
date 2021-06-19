@@ -44,7 +44,7 @@ func (pc *PositionController) GetBasePosition(userInfo *auth.UserInfo, r render.
         r.JSON(404, "Not found")
         return
     }
-    pc.populateTransitionsForPosition(position)
+    pc.populateTransitionsForPosition(&position)
     r.JSON(200, position)
 }
 
@@ -93,7 +93,7 @@ func (pc *PositionController) GetPosition(userInfo *auth.UserInfo, params martin
         r.JSON(404, "Not found")
         return
     }
-    pc.populateTransitionsForPosition(position)
+    pc.populateTransitionsForPosition(&position)
 
     r.JSON(200, position)
 }
@@ -175,6 +175,7 @@ func(pc *PositionController) SavePosition(position models.Position, userInfo *au
 
     pos.GLTF = position.GLTF
     pos.Transitions = position.Transitions
+    pos.Description = position.Description
 
     _, err := pc.positions.UpsertId(objId, pos)
     if err != nil {
@@ -215,7 +216,7 @@ func minimizeTransitions(transitions []models.Position){
     }
 }
 
-func (pc *PositionController) populateTransitionsForPosition(position models.Position) {
+func (pc *PositionController) populateTransitionsForPosition(position *models.Position) {
     positions := make([]models.Position, len(position.Transitions))
     transitionIds := make([]bson.ObjectId, len(position.Transitions))
     for i, transition := range position.Transitions{

@@ -3,7 +3,7 @@ bjjmap:
   ports:
     - 3000:3000
   volumes:
-    - /Users/jj010933/personal/BJJMap/public:/go/src/app/public
+    - /home/jerehmiah/BJJMap/public:/go/src/app/public
     - go-modules:/go/pkg/mod
   links:
     - database

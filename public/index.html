@@ -11,6 +11,16 @@
     <title>Character Tutorial</title>
     <link rel="stylesheet" type="text/css" href="style.css">
     <script src="js/bjjauth.js"></script>
+
+    <!-- includes for the mapping stuff-->
+    <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+
+		<!--polyfills are needed for this extension for old browsers like IE -->
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/core-js/2.5.7/shim.min.js"></script>
+
+		<script src="https://unpkg.com/layout-base/layout-base.js"></script>
+		<script src="https://unpkg.com/avsdf-base/avsdf-base.js"></script>
+		<script src="js/cytoscape-avsdf.js"></script>
 </head>
 <body>
 <div id="firebaseui-auth-container"></div>
@@ -26,14 +36,16 @@
 
   <button id="load_scene">Load position</button>
 </div>
+<div id="bjjgraph" style="visibility: hidden;"></div>
 <div id="core-gallery">
+  <button id="gallery-cancel" class="position-description">Cancel</button>
   <div id="gallery-header"></div>
   <ul id="existing-gallery" class="transitions">
   </ul>
 </div>
 <div id="gallery-template" class="gallery" style="visibility: hidden">
 
-  <img src="blank.jpg" alt="loading" width="600" height="400">
+  <img  alt="loading" width="600" height="400">
 
   <div class="desc">still loading</div>
 </div>
@@ -47,12 +59,16 @@
 </div>
 
 <div id="wrapper" class="wrapper">
-  
+
     <!-- The canvas element is used to draw the 3D scene -->
   
   <canvas id="c"></canvas>
+  <div class="position-description">
+    <input type="text" id="positionDescriptionEntry">
+    <button id="save_description">Save description</button>
+  </div>
   <ul id="transitionGallery" class="transitions">
-    <li id="addTransition"><img src="/img/addTransition.png/" style="max-height: 100%;"></li>
+    <li id="addTransition"><img src="/img/addTransition.png/" style="max-height: 100%;max-width: 100%;"><div class="transitionDescription">Add Transition</div></li>
   </ul>
 </div>
 <canvas id="number" width="64" height="64"></canvas>

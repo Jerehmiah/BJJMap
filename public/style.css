@@ -6,6 +6,14 @@
   display: block;
 }
 
+#bjjgraph {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 .loading {
   position: fixed;
   z-index: 50;
@@ -143,7 +151,24 @@ ul.transitions {
   background-color: #ddd;
 }
 ul.transitions li {
+  position:relative;
   display: inline;
-  width: 20%;
-  height: 20%;
+  height:100%;
+}
+
+.transitionItem {
+  position: relative;
+  width:100%;
+  height:100%;
+}
+
+.transitionDescription {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+}
+.position-description {
+  position: relative;
+  top: 8px;
+  left: 50%;
 }
