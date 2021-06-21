@@ -108,12 +108,23 @@ function addAnnotationToScene(annotation){
     annotationPtr.guiFolder.add({x:()=>{ removeAnnotation(annotationPtr)}},"x").name("Remove");
 }
 
+function clearAnnotations(){
+    annotationList.forEach(annotation=>{
+        removeAnnotationFromScene(annotation);
+    });
+}
+
+function removeAnnotationFromScene(annotationPtr){
+    refInfo.scene.remove(annotationPtr.sprite);
+    annotationList.splice(annotationPtr.index,1);
+    annotationPtr.element.parentNode.removeChild(annotationPtr.element);
+}
+
 function removeAnnotation(annotationPtr){
+    removeAnnotationFromScene(annotationPtr);
     refInfo.currentPosition.annotations.splice(annotationPtr.index,1);
     updateAnnotationsForPosition(refInfo.currentPosition);
-    refInfo.scene.remove(annotationPtr.sprite);
-    annotationPtr.element.parentNode.removeChild(annotationPtr.element);
-    annotationFolder.remove(annotationPtr.guiFolder);
+    //annotationFolder.remove(annotationPtr.guiFolder);
 }
 
 function updatePositionsAnnotation(annotationPtr){
@@ -193,4 +204,4 @@ function getMousePos(e) {
     return { x: e.clientX, y: e.clientY };
 }
 
-export {positionAnnotations, toggleAddingAnnotation, toggleAnnotations, raycast, init, setAnnotationFolder, addAnnotationToScene};
+export {positionAnnotations, toggleAddingAnnotation, toggleAnnotations, raycast, init, setAnnotationFolder, addAnnotationToScene,clearAnnotations};

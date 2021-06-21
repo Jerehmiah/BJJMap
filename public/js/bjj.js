@@ -319,6 +319,7 @@ function doneLoading( gltf ){
 }
 
 function setCurrentPosition(position){
+  BJJANNOTATIONS.clearAnnotations();
   currentPosition = position;
   refInfo.currentPosition = currentPosition;
   if(position.gltf){
