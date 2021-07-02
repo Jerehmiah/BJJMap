@@ -4,6 +4,8 @@ import {GUI} from 'https://threejs.org/examples/jsm/libs/dat.gui.module.js'
 import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
 import * as BJJANNOTATIONS from '/js/annotations.js'
 import {Requestor} from '/js/bjjrequests.js'
+import { TransformControls } from '/js/TransformControls.js';
+
 
 // Set our main variables
 const canvas = document.querySelector('#c');
@@ -27,10 +29,12 @@ let scene,
   positionDescriptionEntry= document.getElementById("positionDescriptionEntry"),
   galleryUse,
   touchListener ={},
-  
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"],
   refInfo={scene:scene,renderer:renderer, camera:camera, currentPosition:currentPosition},
-  requestor;
+  requestor,
+  transControl,
+  raycaster = new THREE.Raycaster();
+
 
 
 function newScene(){
@@ -97,6 +101,10 @@ window.bjjInit= function(user) {
   controls = new OrbitControls( camera, renderer.domElement );
   controls.target.set( 100, 75, 0 );
   controls.update();
+
+  transControl = new TransformControls(camera, renderer.domElement);
+  transControl.addEventListener('dragging-changed', (event)=>{controls.enabled = ! event.value});
+  scene.add(transControl);
 
   document.getElementById( 'save_scene' ).addEventListener( 'click', function () {
     exportGLTF( scene );
@@ -624,32 +632,35 @@ function saveString( text, filename ) {
 
 function addBoneUi(container, bones){
   var movement = container.addFolder("Move model");
-  movement.add(bones[0].position, 'x', -200 + bones[0].position.x, 200 + bones[0].position.x);
-  movement.add(bones[0].position, 'y', -100 + bones[0].position.y, 100 + bones[0].position.y);
-  movement.add(bones[0].position, 'z', -200 + bones[0].position.z, 200 + bones[0].position.z);
-  
-  movement.__controllers[ 0 ].name( "Position.x" );
-  movement.__controllers[ 1 ].name( "Position.y" );
-  movement.__controllers[ 2 ].name( "Position.z" );
-  movement.add( bones[0].rotation, 'x', - Math.PI * 0.5, Math.PI * 0.5 );
-  movement.add( bones[0].rotation, 'y', - Math.PI * 0.5, Math.PI * 0.5 );
-  movement.add( bones[0].rotation, 'z', - Math.PI * 0.5, Math.PI * 0.5 );
 
-  movement.__controllers[ 3 ].name( "rotation.x" );
-  movement.__controllers[ 4 ].name( "rotation.y" );
-  movement.__controllers[ 5 ].name( "rotation.z" );
+  movement.add({clicky:()=>{
+    transControl.detach();
+    transControl.attach(bones[0]);
+    transControl.setMode("translate");
+    scene.add(transControl);
+    }}, 'clicky').name("Move Model");
+  movement.add({clicky:()=>{
+    transControl.detach();
+    transControl.attach(bones[0]);
+    transControl.setMode("rotate");
+    scene.add(transControl);
+  }}, 'clicky').name( "Rotate model");
+
 
   var trunkFolder = container.addFolder("Trunk");
   var armFolder = container.addFolder("Arms");
   var legFolder = container.addFolder("Legs");
   var handFolder = armFolder.addFolder("Hands");
 
-
   //using 1 index, since hips are special
   for ( var i = 1; i < bones.length; i ++ ) {
 
     var bone = bones[ i ];
     var groupFolder;
+    var rotateControl = {bone:bone,clicky:function(){transControl.detach();
+      transControl.attach(this.bone);
+      transControl.setMode("rotate");
+      scene.add(transControl);}};
     if(bone.name.includes("Arm") || bone.name.includes("Shoulder")){
       groupFolder = armFolder;
     } else if(bone.name.includes("Hand")){
@@ -662,13 +673,7 @@ function addBoneUi(container, bones){
     
     var folder = groupFolder.addFolder( bone.name.substring(9) );
 
-    folder.add( bone.rotation, 'x', - Math.PI * 0.5, Math.PI * 0.5 );
-    folder.add( bone.rotation, 'y', - Math.PI * 0.5, Math.PI * 0.5 );
-    folder.add( bone.rotation, 'z', - Math.PI * 0.5, Math.PI * 0.5 );
-
-    folder.__controllers[ 0 ].name( "rotation.x" );
-    folder.__controllers[ 1 ].name( "rotation.y" );
-    folder.__controllers[ 2 ].name( "rotation.z" );
+    folder.add(rotateControl, 'clicky').name( "rotate" );
   }
 }  
 
@@ -739,4 +744,30 @@ function onWindowResize() {
   camera.updateProjectionMatrix();
 
   renderer.setSize( window.innerWidth, .8*window.innerHeight );
+}
+
+
+function raycast(e, touch = false) {
+  var mouse = {};
+  if (touch) {
+      mouse.x = 2 * (e.changedTouches[0].clientX / window.innerWidth) - 1;
+      mouse.y = 1 - 2 * (e.changedTouches[0].clientY / window.innerHeight);
+  } else {
+      mouse.x = 2 * (e.clientX / window.innerWidth) - 1;
+      mouse.y = 1 - 2 * (e.clientY / window.innerHeight);
+  }
+  // update the picking ray with the camera and mouse position
+  raycaster.setFromCamera(mouse, refInfo.camera);
+
+  // calculate objects intersecting the picking ray
+  var intersects = raycaster.intersectObjects(refInfo.scene.children, true);
+
+  intersects.forEach((obj)=>{
+    if(obj.name.includes("bone")){
+      transControl.detach();
+      transControl.attach(obj);
+      scene.add(transControl);
+    }
+  });
+
 }
