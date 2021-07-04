@@ -11,5 +11,10 @@ bjjmap:
     - MAIN_DB_NAME=bjjmap_database_1
     - GOOGLE_APPLICATION_CREDENTIALS=/go/src/app/bjjmap-e68a1-firebase-adminsdk-hi0bs-61779b1497.json
 
+positions-seed:
+  build: ./positions-seed
+  links: 
+    - database
+
 database:
   image: mongo:latest
