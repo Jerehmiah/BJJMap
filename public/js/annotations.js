@@ -103,9 +103,9 @@ function addAnnotationToScene(annotation){
     var annotationPtr = {base:annotation, vector:annotation.vertex,element:annotationElement,sprite:sprite, index:spriteNumber-1};
     annotationList.push(annotationPtr); 
 
-    annotationPtr.guiFolder = annotationFolder.addFolder(`Annotation ${spriteNumber}`);
-    annotationPtr.guiFolder.add(annotation, "text").onChange(()=>{updatePositionsAnnotation(annotationPtr)});
-    annotationPtr.guiFolder.add({x:()=>{ removeAnnotation(annotationPtr)}},"x").name("Remove");
+    // annotationPtr.guiFolder = annotationFolder.addFolder(`Annotation ${spriteNumber}`);
+    // annotationPtr.guiFolder.add(annotation, "text").onChange(()=>{updatePositionsAnnotation(annotationPtr)});
+    // annotationPtr.guiFolder.add({x:()=>{ removeAnnotation(annotationPtr)}},"x").name("Remove");
 }
 
 function clearAnnotations(){
