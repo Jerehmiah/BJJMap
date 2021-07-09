@@ -23,7 +23,7 @@
 		<script src="js/cytoscape-avsdf.js"></script>
 </head>
 <body>
-<div id="firebaseui-auth-container"></div>
+<div id="firebaseui-auth-container" style="z-index: 100; position:absolute; height: 100%; width: 100%;"></div>
   <!-- The loading element overlays all else until the model is loaded, at which point we remove this element from the DOM -->  
 <div id="controls" class="debugControls">
   <label for="posName">Position name:</label>
@@ -37,7 +37,7 @@
   <button id="load_scene">Load position</button>
 </div>
 <div id="bjjgraph" style="visibility: hidden;"></div>
-<div id="core-gallery">
+<div id="core-gallery" style="visibility: hidden;">
   <button id="gallery-cancel" class="position-description">Cancel</button>
   <div id="gallery-header"></div>
   <ul id="existing-gallery" class="transitions">
@@ -58,7 +58,7 @@
   </div>
 </div>
 
-<div id="wrapper" class="wrapper">
+<div id="wrapper" class="wrapper" style="visibility:hidden">
 
     <!-- The canvas element is used to draw the 3D scene -->
   

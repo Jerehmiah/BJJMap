@@ -14,7 +14,5 @@ func Database() *mgo.Session {
 
     session.SetMode(mgo.Monotonic, true)
 
-    session.DB(os.Getenv("SUBJECT_DB_NAME"))
-
     return session
 }

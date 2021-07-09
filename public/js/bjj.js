@@ -5,6 +5,7 @@ import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.j
 import * as BJJANNOTATIONS from '/js/annotations.js'
 import {Requestor} from '/js/bjjrequests.js'
 import { TransformControls } from '/js/TransformControls.js';
+import * as BJJGRAPH from '/js/bjjgraph.js';
 
 
 // Set our main variables
@@ -27,6 +28,7 @@ let scene,
   galleryHeader = document.getElementById("gallery-header"),
   existingGallery= document.getElementById("existing-gallery"),
   positionDescriptionEntry= document.getElementById("positionDescriptionEntry"),
+  authDiv = document.getElementById("firebaseui-auth-container"),
   galleryUse,
   touchListener ={},
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"],
@@ -79,6 +81,8 @@ function newDirectedLight(){
 }
 
 window.bjjInit= function(user) {
+  authDiv.style.visibility = "hidden";
+  wrapper.style.visibility = "visible";
     requestor = new Requestor(user);
     refInfo.requestor = requestor;
   // Init the scene
@@ -93,6 +97,9 @@ window.bjjInit= function(user) {
     1000
   );
   refInfo.camera = camera;
+  refInfo.wrapper = wrapper;
+  refInfo.coreGallery = coreGallery;
+  refInfo.setCurrentPosition = setCurrentPosition;
   camera.position.z = 300
   camera.position.x = 100;
   camera.position.y = 75;
@@ -110,6 +117,7 @@ window.bjjInit= function(user) {
     exportGLTF( scene );
   } );
   BJJANNOTATIONS.init(refInfo, touchListener);
+  BJJGRAPH.setupGraph(refInfo);
   document.getElementById( 'load_scene' ).addEventListener( 'click', function () {
     loadStandardPose('halfguard');
     //importGLTF('models/scene/closed_guard.gltf', false);
@@ -347,80 +355,8 @@ function setCurrentPosition(position){
     })
   }
   positionDescriptionEntry.value = position.description;
-  updateGraph();
+  BJJGRAPH.updateGraph();
 }
-
-function getElementsForGraph(positions){
-  var nodes=[],edges=[];
-  positions.forEach((position,index)=>{
-    nodes.push({data:{id:position.id, description: position.description, position: position, weight:index}});
-    if(position.transitions){
-      position.transitions.forEach((transition)=>{
-        edges.push({data:{source:position.id,target:transition.id,directed:'true'}});
-      });
-    }
-  });
-  return {nodes:nodes, edges:edges};
-}
-
-function updateGraph(){
-  requestor.doGet('/api/positions/1/', {
-    '200': (positions) => {
-      var bjjgraph = window.bjjgraph = cytoscape({
-        container: document.getElementById('bjjgraph'),
-    
-        layout: {
-          name: 'avsdf',
-          nodeSeparation: 120
-        },
-    
-        style: [
-          {
-            selector: 'node',
-            style: {
-              'label': 'data(description)',
-              'text-valign': 'center',
-              'color': '#000000',
-              'background-color': '#3a7ecf'
-            }
-          },
-    
-          {
-            selector: 'edge',
-            style: {
-              'width': 2,
-              'curve-style': 'bezier',
-              'line-color': '#3a7ecf',
-              'target-arrow-shape': 'triangle',
-              'target-arrow-color': '#3a7ecf',
-              'opacity': 0.5
-            }
-          }
-        ],
-        elements: getElementsForGraph(positions)
-      });
-      bjjgraph.on('select', 'node', (event)=>{
-        setCurrentPosition(event.target.data().position);
-        hideGraph();
-      });
-    }
-  });
-}
-
-function showGraph(){
-  wrapper.style.visibility = "hidden";
-  coreGallery.style.visibility = "hidden";
-  document.getElementById('bjjgraph').style.visibility = "visible";
-  
-}
-
-function hideGraph(){
-  wrapper.style.visibility = "visible";
-  coreGallery.style.visibility = "hidden";
-  document.getElementById('bjjgraph').style.visibility = "hidden";
-}
-
-
 
 function updateDescription(){
   currentPosition.description = positionDescriptionEntry.value;
@@ -482,22 +418,6 @@ function exportGLTF(scene){
   }), {'200':()=>{
         console.log('OK');
   }});
-}
-
-function swapBots(boneCollection){
-  var newXbones = [];
-  var newYbones = [];
-
-  boneCollection.xbones.forEach((bone, index) => {
-    var tmpName = bone.name;
-    var tmpBone = boneCollection.ybones[index];
-    bone.name = tmpBone.name;
-    newYbones.push(bone);
-    tmpBone.name = tmpName;
-    newXbones.push(tmpBone);
-  });
-  boneCollection.xbones = newXbones;
-  boneCollection.ybones = newYbones;
 }
 
 function figureOutDeltas(){
@@ -713,7 +633,7 @@ function setupDatGui() {
       logout: logout,
       addannotation: BJJANNOTATIONS.toggleAddingAnnotation,
       saveposition: savePosition,
-      showgraph: showGraph
+      showgraph: BJJGRAPH.showGraph
     }
     gui.add(options, "annotations").name("Toggle Annotations");
     gui.add(options, "addannotation").name("Add an annotation");

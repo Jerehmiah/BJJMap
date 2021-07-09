@@ -6,7 +6,7 @@ import (
 
 type Position struct {
 	Id          bson.ObjectId  `json:"id" bson:"_id"`
-	Owner       string         `form:"owner" json:"owner"`
+	Owner       string         `bson:",omitempty" form:"owner" json:"owner"`
 	Public      bool           `bson:",omitempty" json:"public"`
 	Description string         `bson:",omitempty" json:"description"`
 	Transitions []Position     `bson:",omitempty" form:"transitions" json:"transitions"`
