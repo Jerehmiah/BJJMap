@@ -1,6 +1,5 @@
 import {OrbitControls} from 'https://threejs.org/examples/jsm/controls/OrbitControls.js'
 import * as THREE from 'https://threejs.org/build/three.module.js'
-import {GUI} from 'https://threejs.org/examples/jsm/libs/dat.gui.module.js'
 import {GLTFLoader } from 'https://threejs.org/examples/jsm/loaders/GLTFLoader.js';
 import * as BJJANNOTATIONS from '/js/annotations.js'
 import {Requestor} from '/js/bjjrequests.js'
@@ -16,11 +15,61 @@ let scene,
   camera,
   controls,
   currentPosition,
-  gui = new GUI(),
   xbones =[],
   ybones =[],
-  uiSetup = false,
-  xbotLoaded = false,
+  overLayBoneMap={},
+  boneNameMap ={mixamorigHips:"hips",
+    mixamorigSpine: "18512287255",
+    mixamorigSpine1: "195195195255",
+    mixamorigSpine2: "25512739255",
+    mixamorigNeck: "16373164255",
+    mixamorigHead: "200191231255",
+    mixamorigRightShoulder: "2372836255",
+    mixamorigRightArm: "136021255",
+    mixamorigRightForeArm: "127127127255",
+    mixamorigLeftHand: "18123029255",
+    mixamorigLeftHandRing1: "2552420255",
+    mixamorigLeftHandRing2: "25512739255",
+    mixamorigLeftHandRing3: "2372836255",
+    mixamorigLeftHandIndex1: "18512287255",
+    mixamorigLeftHandIndex2: "195195195255",
+    mixamorigLeftHandIndex3: "16373164255",
+    mixamorigLeftHandThumb1: "l239228176255",
+    mixamorigLeftHandThumb2: "l25520114255",
+    mixamorigLeftHandThumb3: "l255174201255",
+    mixamorigLeftHandMiddle1: "6372204255",
+    mixamorigLeftHandMiddle2: "0162232255",
+    mixamorigLeftHandMiddle3: "3417776255",
+    mixamorigLeftHandPinky1: "136021255",
+    mixamorigLeftHandPinky2: "127127127255",
+    mixamorigLeftHandPinky3: "000255",
+    mixamorigLeftShoulder: "2552420255",
+    mixamorigLeftArm: "3417776255",
+    mixamorigLeftForeArm: "0162232255",
+    mixamorigRightHand: "18123029255",
+    mixamorigRightHandPinky1: "136021255",
+    mixamorigRightHandPinky2: "127127127255",
+    mixamorigRightHandPinky3: "000255",
+    mixamorigRightHandRing1: "2552420255",
+    mixamorigRightHandRing2: "25512739255",
+    mixamorigRightHandRing3: "2372836255",
+    mixamorigRightHandMiddle1: "6372204255",
+    mixamorigRightHandMiddle2: "0162232255",
+    mixamorigRightHandMiddle3: "3417776255",
+    mixamorigRightHandIndex1: "18512287255",
+    mixamorigRightHandIndex2: "195195195255",
+    mixamorigRightHandIndex3: "16373164255",
+    mixamorigRightHandThumb1: "l239228176255",
+    mixamorigRightHandThumb2: "l25520114255",
+    mixamorigRightHandThumb3: "l255174201255",
+    mixamorigLeftUpLeg: "239228176255",
+    mixamorigLeftLeg: "18123029255",
+    mixamorigLeftFoot: "112146190255",
+    mixamorigLeftToeBase: "unset",
+    mixamorigRightUpLeg: "255174201255",
+    mixamorigRightLeg: "25520114255",
+    mixamorigRightFoot: "25520114255",
+    mixamorigRightToeBase: "unset"},
   corePoses ={},
   wrapper = document.getElementById("wrapper"),
   coreGallery = document.getElementById("core-gallery"),
@@ -29,13 +78,26 @@ let scene,
   existingGallery= document.getElementById("existing-gallery"),
   positionDescriptionEntry= document.getElementById("positionDescriptionEntry"),
   authDiv = document.getElementById("firebaseui-auth-container"),
+  viewPort = document.getElementById("viewingArea"),
+  menuAdd = document.getElementById("menuAdd"),
+  menuMove = document.getElementById("menuMove"), 
+  menuNote = document.getElementById("menuNote"),
+  menuGraph = document.getElementById("menuGraph"),
+  menuLogout = document.getElementById("menuLogout"),
   galleryUse,
   touchListener ={},
   irrelevantBoneNames = ["mixamorigHeadTop_End", "mixamorigLeftEye", "mixamorigRightEye", "mixamorigLeftToe_End", "mixamorigRightToe_End"],
   refInfo={scene:scene,renderer:renderer, camera:camera, currentPosition:currentPosition},
   requestor,
   transControl,
-  raycaster = new THREE.Raycaster();
+  raycaster = new THREE.Raycaster(),
+  moveBotButton = document.getElementById("closeModelMovement"),
+  overlayCanvas = document.getElementById("overlayCanvas"),
+  activeBotControl,
+  moveControlsPane = document.getElementById("modelMovementControls"),
+  blueBotRadio = document.getElementById("blueRadio"),
+  redBotRadio = document.getElementById("redRadio");
+  
 
 
 
@@ -83,8 +145,10 @@ function newDirectedLight(){
 window.bjjInit= function(user) {
   authDiv.style.visibility = "hidden";
   wrapper.style.visibility = "visible";
+  viewPort.style.visibility = "visible";
     requestor = new Requestor(user);
     refInfo.requestor = requestor;
+  setupMenu();
   // Init the scene
   newScene();
   // Init the renderer
@@ -96,6 +160,7 @@ window.bjjInit= function(user) {
     0.1,
     1000
   );
+
   refInfo.camera = camera;
   refInfo.wrapper = wrapper;
   refInfo.coreGallery = coreGallery;
@@ -131,7 +196,7 @@ window.bjjInit= function(user) {
 
   document.getElementById('save_description').addEventListener('click', updateDescription);
   document.getElementById('gallery-cancel').addEventListener('click', hideGallery)
-
+  addMenuListeners();
 
   requestor.doGet("/api/positions/1/core", {
     '200':poses =>{
@@ -150,12 +215,12 @@ window.bjjInit= function(user) {
 
 
 
-  importGLTF('models/scene/closed_guard.gltf', true);  
+  importGLTF('models/scene/scene2.gltf', true);  
   update();
   onWindowResize();
   
-  window.addEventListener('click', e => handleScreenTouches(e));
-  window.addEventListener('touchend', e => handleScreenTouches(e, true));
+  wrapper.addEventListener('click', e => handleScreenTouches(e));
+  wrapper.addEventListener('touchend', e => handleScreenTouches(e, true));
 
   
 }
@@ -382,14 +447,29 @@ function doLoadInit(gltf){
     gltf.scene.traverse( o=>{
     
     if (o.isBone && o.userData.transformData && !irrelevantBoneNames.includes(o.name)){
-        
-        if (isXbotBone(o) ){
-        xbones.push(o)
+      var prefix;
+      if (isXbotBone(o) ){
+        xbones.push(o);
+        if(o.name.includes("LeftHand")){
+          prefix = "rl";
+        } else if(o.name.includes("RightHand")){
+          prefix = "rr";
+        } else {
+          prefix = "r";
         }
-        else{
-        
-        ybones.push(o)
+        overLayBoneMap[`${prefix}${boneNameMap[o.name]}`] = o;
+      }
+      else{
+        ybones.push(o);
+        if(o.name.includes("LeftHand")){
+          prefix = "bl";
+        } else if(o.name.includes("RightHand")){
+          prefix = "br";
+        } else {
+          prefix = "b";
         }
+        overLayBoneMap[`${prefix}${boneNameMap[o.name.slice(0,-2)]}`] = o;
+      }
     }
     });
     scene.add( gltf.scene );
@@ -398,9 +478,9 @@ function doLoadInit(gltf){
     gltf.scenes; // Array<THREE.Group>
     gltf.cameras; // Array<THREE.Camera>
     gltf.asset; // Object
-    uiSetup = false;
-    xbotLoaded = true;
 }
+
+
 
 function loadStandardPose(name){
   parseGLTF(corePoses[name].gltf);
@@ -616,37 +696,142 @@ function savePosition(){
   } );
 }
 
-function setupDatGui() {
-  if(!uiSetup && xbotLoaded){
-    uiSetup = true;
-    xbotLoaded = false;
-    gui.destroy();
-    gui = new GUI();
-    addBoneUi(gui.addFolder( "Blue Bot" ), ybones);
-    addBoneUi(gui.addFolder( "Red Bot" ), xbones);
+function setupMoveControls(){
+  menuMove.addEventListener('click', showMoveControls);
+  menuMove.addEventListener('touchend', showMoveControls);
+  blueBotRadio.addEventListener("change", ()=>{if(blueBotRadio.checked){setMoveControlsToBlueBot();}else{setMoveControlsToRedBot();}});
+  redBotRadio.addEventListener("change", ()=>{if(blueBotRadio.checked){setMoveControlsToBlueBot();}else{setMoveControlsToRedBot();}});
+  moveBotButton.addEventListener('click', closeMoveControls);
+}
 
-    BJJANNOTATIONS.setAnnotationFolder(gui.addFolder("Annotations"));
+function setMoveControlsToBlueBot(){
+  setMoveControls('blueBot');
+}
 
-    var options = {
-      annotations: BJJANNOTATIONS.toggleAnnotations,
-      debug: showDebugControls,
-      logout: logout,
-      addannotation: BJJANNOTATIONS.toggleAddingAnnotation,
-      saveposition: savePosition,
-      showgraph: BJJGRAPH.showGraph
-    }
-    gui.add(options, "annotations").name("Toggle Annotations");
-    gui.add(options, "addannotation").name("Add an annotation");
+function setMoveControlsToRedBot(){
+  setMoveControls('redBot');
+}
 
-    gui.add(options, "saveposition").name("Save position");
-    gui.add(options, "debug").name("Show Debug");
-    gui.add(options, "showgraph").name("Show Graph");
-    gui.add(options, "logout").name("Logout");
+function setMoveControlsToBlueLeftHand(){
+  setMoveControls('blueHand');
+  activeBotControl.handed = 'left';
+}
 
+function setMoveControlsToBlueRightHand(){
+  setMoveControls('blueHand');
+  activeBotControl.handed = 'right';
+}
+
+function setMoveControlsToRedLeftHand(){
+  setMoveControls('redHand');
+  activeBotControl.handed = 'left';
+}
+
+function setMoveControlsToRedRightHand(){
+  setMoveControls('redHand');
+  activeBotControl.handed = 'right';
+}
+
+
+function closeMoveControls(){
+  if(activeBotControl){
+    activeBotControl.style.visibility = "hidden";
+    overlayCanvas.style.visibility = "hidden";
+    overlayCanvas.getContext('2d').clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+  }
+  moveControlsPane.style.visibility = "hidden";
+  activeBotControl = null;
+  transControl.detach();
+}
+
+function setMoveControls(type){
+  closeMoveControls();
+  var overlay;
+  moveControlsPane.style.visibility = "visible";
+  activeBotControl = document.getElementById(type);
+  activeBotControl.addEventListener("click", getPixelColorForOverlay);
+  overlay = document.getElementById(`${type}Overlay`);
+  
+  activeBotControl.style.visibility = "visible";
+  overlayCanvas.width = overlay.width;
+  overlayCanvas.height = overlay.height;
+  overlayCanvas.getContext('2d').drawImage(overlay, 0, 0, overlay.width, overlay.height);
+
+}
+
+function getPixelColorForOverlay(event){
+  var mapping = getMappingForEvent(event);
+  switch(mapping){
+    case "b000255":
+      setMoveControlsToBlueRightHand();
+      break;
+    case "r000255":
+      setMoveControlsToRedRightHand();
+      break;
+    case "b6372204255":
+      setMoveControlsToBlueLeftHand();
+      break;
+    case "r6372204255":
+      setMoveControlsToRedLeftHand();
+      break;
+    default:
+      addMoveListenerForBone(overLayBoneMap[mapping]);
   }
 }
 
+function addMoveListenerForBone(bone){
+  transControl.detach();
+  transControl.attach(bone);
+  transControl.setMode("rotate");
+  scene.add(transControl);
+}
+
+function getMappingForEvent(event){
+  var pixelData = overlayCanvas.getContext('2d').getImageData(event.offsetX, event.offsetY, 1, 1).data;
+  var prefix;
+  switch(activeBotControl.id){
+    case 'blueBot':
+      prefix = 'b';
+      break;
+    case 'redBot':
+      prefix = 'r';
+      break;
+    case 'blueHand':
+      prefix = activeBotControl.handed === 'left' ? 'bl' : 'br';
+      break;
+    case 'redHand':
+      prefix = activeBotControl.handed === 'left' ? 'rl' : 'rr';
+      break;  
+  }
+  return `${prefix}${pixelData[0]}${pixelData[1]}${pixelData[2]}${pixelData[3]}`
+}
+
+function showMoveControls(){
+  //closeNav();
+  setMoveControlsToBlueBot();
+  
+  
+}
+
+function showAnnotationMenu(){
+  closeNav();
+}
+
+function addMenuListeners() {
+  setupMoveControls();
+  menuAdd.addEventListener('click', addNewTransition);
+  menuNote.addEventListener('click', showAnnotationMenu);
+  menuGraph.addEventListener('click', BJJGRAPH.showGraph);
+  menuLogout.addEventListener('click', logout);
+  menuAdd.addEventListener('touchend', addNewTransition);
+  menuNote.addEventListener('touchend', showAnnotationMenu);
+  menuGraph.addEventListener('touchend', BJJGRAPH.showGraph);
+  menuLogout.addEventListener('touchend', logout);
+
+}
+
 function addNewTransition(){
+  //closeNav();
   galleryUse = "addTransition";
   showGallery();
 }
@@ -655,7 +840,6 @@ function update() {
   BJJANNOTATIONS.positionAnnotations();
   renderer.render(scene, camera);
   requestAnimationFrame(update);
-  setupDatGui();
 }
 
 window.addEventListener( 'resize', onWindowResize, false );
@@ -690,4 +874,45 @@ function raycast(e, touch = false) {
     }
   });
 
+}
+
+function setupMenu(){
+  var button = document.getElementById('cn-button'),
+    cnwrapper = document.getElementById('cn-wrapper'),
+    overlay = document.getElementById('cn-overlay');
+
+  //open and close menu when the button is clicked
+  var open = false;
+  button.addEventListener('click', handler, false);
+  button.addEventListener('focus', handler, false);
+  cnwrapper.addEventListener('click', cnhandle, false);
+
+  function cnhandle(e){
+    e.stopPropagation();
+  }
+
+  function handler(e){
+    if (!e) var e = window.event;
+    e.stopPropagation();//so that it doesn't trigger click event on document
+
+      if(!open){
+        openNav();
+      }
+    else{
+        closeNav();
+      }
+  }
+  function openNav(){
+    open = true;
+    button.innerHTML = "-";
+    overlay.classList.add('on-overlay');
+    cnwrapper.classList.add('opened-nav');
+  }
+  function closeNav(){
+    open = false;
+    button.innerHTML = "+";
+    overlay.classList.remove('on-overlay');
+    cnwrapper.classList.remove('opened-nav');
+  }
+  document.addEventListener('click', closeNav);
 }

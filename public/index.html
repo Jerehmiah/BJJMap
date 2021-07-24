@@ -36,13 +36,7 @@
 
   <button id="load_scene">Load position</button>
 </div>
-<div id="bjjgraph" style="visibility: hidden;"></div>
-<div id="core-gallery" style="visibility: hidden;">
-  <button id="gallery-cancel" class="position-description">Cancel</button>
-  <div id="gallery-header"></div>
-  <ul id="existing-gallery" class="transitions">
-  </ul>
-</div>
+
 <div id="gallery-template" class="gallery" style="visibility: hidden">
 
   <img  alt="loading" width="600" height="400">
@@ -58,19 +52,58 @@
   </div>
 </div>
 
-<div id="wrapper" class="wrapper" style="visibility:hidden">
-
+<div id="viewingArea" class="viewing" style="visibility: hidden">
+  <div id="wrapper" class="wrapper" style="visibility:hidden">
     <!-- The canvas element is used to draw the 3D scene -->
   
-  <canvas id="c"></canvas>
-  <div class="position-description">
-    <input type="text" id="positionDescriptionEntry">
-    <button id="save_description">Save description</button>
+    <canvas id="c"></canvas>
+    <div class="position-description">
+      <input type="text" id="positionDescriptionEntry">
+      <button id="save_description">Save description</button>
+    </div>
+    <ul id="transitionGallery" class="transitions">
+      <li id="addTransition"><img src="/img/addTransition.png/" style="max-height: 100%;max-width: 100%;"><div class="transitionDescription">Add Transition</div></li>
+    </ul>
   </div>
-  <ul id="transitionGallery" class="transitions">
-    <li id="addTransition"><img src="/img/addTransition.png/" style="max-height: 100%;max-width: 100%;"><div class="transitionDescription">Add Transition</div></li>
+  <div id="bjjgraph" style="visibility: hidden;"></div>
+  <div id="core-gallery" class="core-gallery" style="visibility: hidden;">
+    <button id="gallery-cancel" class="position-description">Cancel</button>
+    <div id="gallery-header"></div>
+    <ul id="existing-gallery" class="transitions">
+    </ul>
+  </div>
+  <div id="modelMovementControls" class="modelMover" style="visibility: hidden;">
+    <img id="redBot" src="/img/redbot.png" style="visibility: hidden;"/>
+    <img id="redBotOverlay" src="/img/redbot-overlay.png" style="visibility: hidden;"/>
+    <img id="blueBot" src="/img/bluebot.png" style="visibility: hidden;"/>
+    <img id="blueBotOverlay" src="/img/bluebot-overlay.png" style="visibility: hidden;"/>
+    <img id="redHand" src="/img/redhand.png" style="visibility: hidden;"/>
+    <img id="redHandOverlay" src="/img/redhand-overlay.png" style="visibility: hidden;"/>
+    <img id="blueHand" src="/img/bluehand.png" style="visibility: hidden;"/>
+    <img id="blueHandOverlay" src="/img/bluehand-overlay.png" style="visibility: hidden;"/>
+    <canvas id="overlayCanvas" style="visibility: hidden;"></canvas>
+    <input id="blueRadio" type="radio" name="botColor" value="Blue" checked/>
+    <label for="blueRadio">Blue</label>
+    <input id="redRadio" type="radio" name="botColor" value="Red"/>
+    <label for="redRadio">Red</label>
+    <button id="closeModelMovement">Done</button>
+  </div>
+
+</div>
+
+
+<button class="cn-button" id="cn-button">+</button>
+<div class="cn-wrapper" id="cn-wrapper">
+  <ul>
+      <li><a id="menuAdd"><span class="icon-picture">Add</span></a></li>
+      <li><a id="menuMove"><span class="icon-headphones">Move</span></a></li>
+      <li><a id="menuNote"><span class="icon-home">Note</span></a></li>
+      <li><a id="menuGraph"><span class="icon-facetime-video">Graph</span></a></li>
+      <li><a id="menuLogout"><span class="icon-envelope-alt">Logout</span></a></li>
   </ul>
 </div>
+<div id="cn-overlay" class="cn-overlay"></div>
+
 <canvas id="number" width="64" height="64"></canvas>
 <div id="tip"  class="annotation"><p>Text stuff</p></div>
 <!-- The core Firebase JS SDK is always required and must be listed first -->
