@@ -706,10 +706,12 @@ function setupMoveControls(){
 
 function setMoveControlsToBlueBot(){
   setMoveControls('blueBot');
+  addMoveListenerForBone(ybones[0], true);
 }
 
 function setMoveControlsToRedBot(){
   setMoveControls('redBot');
+  addMoveListenerForBone(xbones[0], true);
 }
 
 function setMoveControlsToBlueLeftHand(){
@@ -725,6 +727,14 @@ function setMoveControlsToBlueRightHand(){
 function setMoveControlsToRedLeftHand(){
   setMoveControls('redHand');
   activeBotControl.handed = 'left';
+}
+
+function setMoveControlsToRotateBlue(){
+  addMoveListenerForBone(ybones[0]);
+}
+
+function setMoveControlsToRotateRed(){
+  addMoveListenerForBone(xbones[0]);
 }
 
 function setMoveControlsToRedRightHand(){
@@ -762,6 +772,12 @@ function setMoveControls(type){
 function getPixelColorForOverlay(event){
   var mapping = getMappingForEvent(event);
   switch(mapping){
+    case "b10715426255":
+      setMoveControlsToRotateBlue();
+      break;
+    case "r10715426255":
+      setMoveControlsToRotateRed();
+      break;
     case "b000255":
       setMoveControlsToBlueRightHand();
       break;
@@ -779,10 +795,10 @@ function getPixelColorForOverlay(event){
   }
 }
 
-function addMoveListenerForBone(bone){
+function addMoveListenerForBone(bone, movement=false){
   transControl.detach();
   transControl.attach(bone);
-  transControl.setMode("rotate");
+  transControl.setMode(movement ? "translate": "rotate");
   scene.add(transControl);
 }
 
