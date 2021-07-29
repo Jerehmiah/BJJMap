@@ -72,7 +72,7 @@ let scene,
     mixamorigRightToeBase: "unset"},
   corePoses ={},
   wrapper = document.getElementById("wrapper"),
-  coreGallery = document.getElementById("core-gallery"),
+  coreGallery = document.getElementById("core-container"),
   transitionGallery = document.getElementById("transitionGallery"),
   galleryHeader = document.getElementById("gallery-header"),
   existingGallery= document.getElementById("existing-gallery"),
@@ -190,13 +190,13 @@ window.bjjInit= function(user) {
 
   } );
 
-  document.getElementById( 'addTransition').addEventListener('click', function () {
-    addNewTransition();
-  });
-
   document.getElementById('save_description').addEventListener('click', updateDescription);
   document.getElementById('gallery-cancel').addEventListener('click', hideGallery)
   addMenuListeners();
+  document.getElementById('closeAnnotationsControl').addEventListener('click', hideAnnotationMenu);
+  document.getElementById('newAnnotation').addEventListener('click', BJJANNOTATIONS.toggleAddingAnnotation);
+  document.getElementById('toggleAnnotations').addEventListener('click', BJJANNOTATIONS.toggleAnnotations);
+
 
   requestor.doGet("/api/positions/1/core", {
     '200':poses =>{
@@ -247,32 +247,52 @@ function addPoseToGallery(pose){
     "botcolor":pose.botcolor,
     "description":pose.description
   };
-  var poseThumb = document.querySelector(".gallery");
-  poseThumb = poseThumb.cloneNode(true);
+  addItemToGallery(pose, pose.thumb, galleryItemSelection, coreGallery);
+  // var poseThumb = document.querySelector(".gallery").cloneNode(true);
+  // poseThumb.style.visibility = null;
+
+
+  // var thumbImg = poseThumb.children[0];
+  // thumbImg.src = pose.thumb;
+  // thumbImg.alt = pose.description;
+
+  // poseThumb.children[1].innerHTML= pose.description;
+
+  // poseThumb.onclick = () => {galleryItemSelection(pose);}
+
+  // coreGallery.insertBefore(poseThumb, document.getElementById("transition-container"));
+}
+
+function addItemToGallery(obj, thumb, onClickFunc, gallery){
+  var poseThumb = document.querySelector(".gallery").cloneNode(true);
   poseThumb.style.visibility = null;
-  poseThumb.id = `thumb_${pose.name}`;
+
 
   var thumbImg = poseThumb.children[0];
-  thumbImg.src = pose.thumb;
-  thumbImg.alt = pose.description;
+  thumbImg.src = thumb;
+  thumbImg.alt = obj.description;
 
-  poseThumb.children[1].innerHTML= pose.description;
+  poseThumb.children[1].innerHTML= obj.description;
 
-  poseThumb.onclick = () => {galleryItemSelection(pose);}
+  poseThumb.onclick = () => {onClickFunc(obj);}
 
-  coreGallery.insertBefore(poseThumb, existingGallery);
+  gallery.appendChild(poseThumb);
 }
 
 function addPositionToExistingGallery(position){
-  var positionItem = document.getElementById("addTransition").cloneNode(true);
+  addItemToGallery(position, corePoses[position.origin].thumb, addExistingPositionToCurrent, existingGallery);
+  // var positionItem = document.querySelector(".gallery").cloneNode(true);
 
-  positionItem.children[0].src = corePoses[position.origin].thumb;
-  positionItem.children[1].innerHTML = position.description;
-  positionItem.addEventListener('click', ()=> {
-    addExistingPositionToCurrent(position);
-  });
-  positionItem.id = `position${existingGallery.children.length}`;
-  existingGallery.appendChild(positionItem);
+  // var thumbImg = poseThumb.children[0];
+  // thumbImg.src = corePoses[position.origin].thumb;
+  // thumbImg.alt = position.description;
+
+
+  // positionItem.addEventListener('click', ()=> {
+  //   addExistingPositionToCurrent(position);
+  // });
+  // positionItem.id = `position${existingGallery.children.length}`;
+  // existingGallery.appendChild(positionItem);
 }
 
 function addExistingPositionToCurrent(position){
@@ -286,22 +306,21 @@ function addExistingPositionToCurrent(position){
 }
 
 function addTransitionToGallery(transition){
-  var transGalItem = document.getElementById("addTransition").cloneNode(true);
+  addItemToGallery(transition, corePoses[transition.origin].thumb, loadPositionFromServer, transitionGallery);
+  // var transGalItem = document.getElementById("addTransition").cloneNode(true);
 
-  transGalItem.children[0].src = corePoses[transition.origin].thumb;
-  transGalItem.children[1].innerHTML = transition.description;
-  transGalItem.addEventListener('click', ()=> {
-    loadPositionFromServer(transition);
-  });
-  transGalItem.id = `transition${transitionGallery.children.length}`;
-  transitionGallery.appendChild(transGalItem);
+  // transGalItem.children[0].src = corePoses[transition.origin].thumb;
+  // transGalItem.children[1].innerHTML = transition.description;
+  // transGalItem.addEventListener('click', ()=> {
+  //   loadPositionFromServer(transition);
+  // });
+  // transGalItem.id = `transition${transitionGallery.children.length}`;
+  // transitionGallery.appendChild(transGalItem);
 }
 
 function clearTransitionGallery(){
   Array.from(transitionGallery.children).forEach((transitionNode)=>{
-    if(transitionNode.id != 'addTransition'){
-      transitionNode.parentNode.removeChild(transitionNode);
-    }
+    transitionNode.parentNode.removeChild(transitionNode);
   });
 }
 
@@ -823,14 +842,19 @@ function getMappingForEvent(event){
 }
 
 function showMoveControls(){
-  //closeNav();
+  closeNav();
   setMoveControlsToBlueBot();
   
   
 }
 
 function showAnnotationMenu(){
+  document.getElementById("annotationControls").style.visibility = "visible";
   closeNav();
+}
+
+function hideAnnotationMenu(){
+  document.getElementById("annotationControls").style.visibility = "hidden";
 }
 
 function addMenuListeners() {
@@ -847,7 +871,7 @@ function addMenuListeners() {
 }
 
 function addNewTransition(){
-  //closeNav();
+  closeNav();
   galleryUse = "addTransition";
   showGallery();
 }
@@ -924,7 +948,7 @@ function setupMenu(){
     overlay.classList.add('on-overlay');
     cnwrapper.classList.add('opened-nav');
   }
-  function closeNav(){
+  window.closeNav = function (){
     open = false;
     button.innerHTML = "+";
     overlay.classList.remove('on-overlay');

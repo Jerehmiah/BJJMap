@@ -104,6 +104,12 @@
   margin-left: 0px;
 }
 
+.core-container {
+  position:absolute;
+  top: 0px;
+  height: 50%;
+}
+
 div.gallery {
   margin: 5px;
   border: 1px solid #ccc;
@@ -170,7 +176,6 @@ ul.transitions {
   bottom: 0;
   white-space: nowrap;
   max-height: 100%;
-  height:  20%;
   width: 100%;
   
   overflow-x: auto;
@@ -180,12 +185,27 @@ ul.transitions li {
   position:relative;
   display: inline;
   height:100%;
+  max-width: 20%;
 }
 
 .transitionItem {
   position: relative;
   width:100%;
   height:100%;
+}
+
+.transition-container {
+  position: absolute;
+  height:  50%;
+  width: 100%;
+  bottom: 0px;
+}
+
+.transition-picker {
+  position: absolute;
+  height:  20%;
+  width: 100%;
+  bottom: 0px;
 }
 
 .transitionDescription {
@@ -198,6 +218,27 @@ ul.transitions li {
   top: 8px;
   left: 50%;
   max-width: 30%;
+}
+
+.annotationControl {
+  position: absolute;
+  width: 20%;
+  height: 100%;
+  top: 0px;
+  right: 0px;
+  background-color:hsla(0, 88%, 63%, 1)
+}
+
+.annotationButtons {
+  position: absolute;
+  bottom: 0px;
+  width: 100%;
+}
+
+.annotationButtons button{
+  position: relative;
+  bottom: 0px;
+  width: 100%;
 }
 
 .modelMover {

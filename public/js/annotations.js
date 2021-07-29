@@ -103,9 +103,15 @@ function addAnnotationToScene(annotation){
     var annotationPtr = {base:annotation, vector:annotation.vertex,element:annotationElement,sprite:sprite, index:spriteNumber-1};
     annotationList.push(annotationPtr); 
 
-    // annotationPtr.guiFolder = annotationFolder.addFolder(`Annotation ${spriteNumber}`);
-    // annotationPtr.guiFolder.add(annotation, "text").onChange(()=>{updatePositionsAnnotation(annotationPtr)});
-    // annotationPtr.guiFolder.add({x:()=>{ removeAnnotation(annotationPtr)}},"x").name("Remove");
+    var annotationListItem = document.getElementById("annotationListTemplate").cloneNode(true);
+    annotationListItem.children[0].value = annotation.text;
+    annotationListItem.children[0].onchange = () => {annotation.text = annotationListItem.children[0].value; updatePositionsAnnotation(annotationPtr)}
+    annotationListItem.children[1].onclick = () => {removeAnnotation(annotationPtr, annotationListItem)};
+    
+    document.getElementById("annotationList").appendChild(annotationListItem);
+    annotationListItem.style.visibility = null;
+
+
 }
 
 function clearAnnotations(){
@@ -120,11 +126,11 @@ function removeAnnotationFromScene(annotationPtr){
     annotationPtr.element.parentNode.removeChild(annotationPtr.element);
 }
 
-function removeAnnotation(annotationPtr){
+function removeAnnotation(annotationPtr, listItem){
     removeAnnotationFromScene(annotationPtr);
     refInfo.currentPosition.annotations.splice(annotationPtr.index,1);
     updateAnnotationsForPosition(refInfo.currentPosition);
-    //annotationFolder.remove(annotationPtr.guiFolder);
+    listItem.remove();
 }
 
 function updatePositionsAnnotation(annotationPtr){
@@ -204,4 +210,4 @@ function getMousePos(e) {
     return { x: e.clientX, y: e.clientY };
 }
 
-export {positionAnnotations, toggleAddingAnnotation, toggleAnnotations, raycast, init, setAnnotationFolder, addAnnotationToScene,clearAnnotations};
+export {positionAnnotations, toggleAddingAnnotation, toggleAnnotations, raycast, init, setAnnotationFolder, addAnnotationToScene,clearAnnotations,removeAnnotation};
