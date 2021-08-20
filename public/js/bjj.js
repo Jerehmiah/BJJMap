@@ -72,7 +72,8 @@ let scene,
     mixamorigRightToeBase: "unset"},
   corePoses ={},
   wrapper = document.getElementById("wrapper"),
-  coreGallery = document.getElementById("core-container"),
+  coreContainer = document.getElementById("core-container"),
+  coreGallery = document.getElementById("core-gallery"),
   transitionGallery = document.getElementById("transitionGallery"),
   galleryHeader = document.getElementById("gallery-header"),
   existingGallery= document.getElementById("existing-gallery"),
@@ -247,7 +248,7 @@ function addPoseToGallery(pose){
     "botcolor":pose.botcolor,
     "description":pose.description
   };
-  addItemToGallery(pose, pose.thumb, galleryItemSelection, coreGallery);
+  addItemToGallery(pose, pose.thumb, galleryItemSelection, coreContainer);
   // var poseThumb = document.querySelector(".gallery").cloneNode(true);
   // poseThumb.style.visibility = null;
 

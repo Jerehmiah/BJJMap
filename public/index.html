@@ -65,16 +65,19 @@
     </div>
   </div>
   <div id="bjjgraph" style="visibility: hidden;"></div>
-  <div class="core-gallery" style="visibility: hidden;">
-    <div id="core-container" class="core-container">
+  <div id="core-gallery" class="core-gallery" style="visibility: hidden;">
+    <div class="gallery-header">
       <button id="gallery-cancel" class="position-description">Cancel</button>
       <div id="gallery-header"></div>
       <input type="checkbox" id="destinationPositionSwitch">
       <label for="destinationPositionSwitch">Destination position?</label>  
     </div>
+    <div id="core-container" class="core-container">
+    </div>
+    <input type="text" id="newPositionDescription">
+    <label for="newPositionDescription">Name this position</label>
     <div id="existing-gallery" class="transition-container">
-      <input type="text" id="newPositionDescription">
-      <label for="newPositionDescription">Name this position</label>
+    
     </div>
   </div>
   <div id="modelMovementControls" class="modelMover" style="visibility: hidden;">
@@ -86,7 +89,7 @@
     <img id="redHandOverlay" src="/img/redhand-overlay.png" style="visibility: hidden;"/>
     <img id="blueHand" src="/img/bluehand.png" style="visibility: hidden;"/>
     <img id="blueHandOverlay" src="/img/bluehand-overlay.png" style="visibility: hidden;"/>
-    <canvas id="overlayCanvas" style="visibility: hidden;"></canvas>
+    <canvas id="overlayCanvas" style="visibility: hidden; max-width: 100%;"></canvas>
     <input id="blueRadio" type="radio" name="botColor" value="Blue" checked/>
     <label for="blueRadio">Blue</label>
     <input id="redRadio" type="radio" name="botColor" value="Red"/>
